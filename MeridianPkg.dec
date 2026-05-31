@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+[Defines]
+    DEC_SPECIFICATION = 0x00010005
+    PACKAGE_NAME      = MeridianPkg
+    PACKAGE_GUID      = 8D815383-BD60-419E-A7F9-D41A5657F85C
+    PACKAGE_VERSION   = 4.5.0
+
+[Includes]
+    .
+    include
+    boot
+    config
+    discovery
+    drivers
+    install
+    kernel
+    lib
+    loaders
+    loaders/limine
+    platform
+    policy
+    remote
+    storage
+    tools
+    ui
+    EfiLib
+    mok
+    conn/core
+    conn/efi
+    filesystems
+    libstatemachines/include
+    Library/MemLogLib
+    Library/LuaLib
+
+[Protocols]
+    # APFS boot record info protocol (from ApfsJumpStart / acidanthera)
+    gApfsEfiBootRecordInfoProtocolGuid = { 0x03B8D751, 0xA02F, 0x4FF8, { 0x9B, 0x1A, 0x55, 0x24, 0xAF, 0xA3, 0x94, 0x5F } }
+
+    # APFS unsupported BDS protocol
+    gApfsUnsupportedBdsProtocolGuid = { 0xA196A7CA, 0x14C6, 0x11E7, { 0xB9, 0x06, 0xB8, 0xE8, 0x56, 0x2C, 0xBA, 0xFA } }
+
+    # EFI Unicode Collation Protocol v1 (legacy, used as fallback)
+    gEfiUnicodeCollationProtocolGuid = { 0x1D85CD7F, 0xF43D, 0x11D2, { 0x9A, 0x0C, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D } }
+
+    # EFI Console Control Protocol (used by libeg)
+    gEfiConsoleControlProtocolGuid = { 0xF42F7782, 0x012E, 0x4C12, { 0x99, 0x56, 0x49, 0xF9, 0x43, 0x04, 0xF7, 0x21 } }
+
+    # UGA Draw Protocol (vendored locally, not in official EDK2)
+    gEfiUgaDrawProtocolGuid = { 0x982C298B, 0xF4FA, 0x41CB, { 0xB8, 0x38, 0x77, 0xAA, 0x68, 0x8F, 0xB8, 0x39 } }
+
+[Guids]
+    # APFS fingerprint / partition type GUID
+    gApfsPartitionTypeGuid = { 0x7C3457EF, 0x0000, 0x11AA, { 0xAA, 0x11, 0x00, 0x30, 0x65, 0x43, 0xEC, 0xAC } }

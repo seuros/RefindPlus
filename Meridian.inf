@@ -1,0 +1,224 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+# SPDX-FileCopyrightText: 2020-2026 Dayo Akanji
+# SPDX-FileCopyrightText: 2012-2023 Roderick W. Smith
+
+## @file
+#
+# File to Build Meridian With RefindPlusUDK.
+#
+# Copyright 2020-2026 Dayo Akanji (sf.net/u/dakanji/profile)
+# Copyright 2012-2020 Roderick W. Smith (Portions)
+#
+# Released under the terms of Version 3 of the GNU General Public License
+# (or, at your option, any later version).
+#
+##
+
+
+[Defines]
+    INF_VERSION               = 0x00010005
+    BASE_NAME                 = Meridian
+    FILE_GUID                 = E3F0DA9F-26BB-4B9A-B8FB-4D81E11EAE22
+    MODULE_TYPE               = UEFI_APPLICATION
+    EDK_RELEASE_VERSION       = 0x00020000
+    EFI_SPECIFICATION_VERSION = 0x00010000
+    VERSION_STRING            = 1.0
+    ENTRY_POINT               = efi_main
+
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+# VALID_ARCHITECTURES = X64
+#
+
+
+[Sources]
+    platform/cpu.c
+    platform/cpu/intel.c
+    platform/cpu/amd.c
+    platform/apple.c
+    kernel/cache.c
+    kernel/console_capture.c
+    kernel/runtime.c
+    # platform/permafrost.c unlinked -- DRAFT probe, disconnected from core so
+    # Meridian boots straight to the menu
+    config/config.c
+    config/config_sync.c
+    config/config_handlers.c
+    config/config_file.c
+    config/config_submenu.c
+    config/config_stanza.c
+    config/config_linux.c
+    drivers/driver_support.c
+    storage/gpt.c
+    install/install.c
+    loaders/launch_efi.c
+    lib/lib.c
+    storage/volume_scan.c
+    storage/file_io.c
+    loaders/linux.c
+    kernel/loop_timeout.c
+    boot/main.c
+    platform/apple/smc.c
+    platform/reset_reason.c
+    platform/netinfo.c
+    tools/tool_menu.c
+    policy/nvram_helpers.c
+    loaders/macos_boot.c
+    ui/menu.c
+    ui/menu_dialogs.c
+    lib/str_compare.c
+    lib/str_list.c
+    lib/str_merge.c
+    lib/str_guid.c
+    lib/str_format.c
+    loaders/osdetect.c
+    loaders/limine/detect.c
+    loaders/limine/elf.c
+    loaders/limine/requests.c
+    loaders/limine/paging.c
+    loaders/limine/handoff.c
+    loaders/limine/entry.c
+    discovery/scan.c
+    discovery/entry_build.c
+    discovery/bls.c
+    discovery/btrfs_snapshots.c
+    discovery/discovery.c
+    storage/volume.c
+    remote/netboot.c
+    discovery/bsd.c
+    tools/tools.c
+    discovery/apple.c
+    discovery/fw_strategy.c
+    discovery/uefi1.c
+    discovery/uefi2.c
+    ui/display.c
+    ui/screenmgt.c
+    platform/sysinfo.c
+    EfiLib/AcquireGOP.c
+    EfiLib/AmendSysTable.c
+    EfiLib/BmLib.c
+    EfiLib/BdsTianoCore.c
+    EfiLib/DevicePath.c                     #included into GenericBdsLib
+    EfiLib/BdsConnect.c                     #included into GenericBdsLib
+    EfiLib/GenericBdsLib.h
+# Conn renderer core (shared with the standalone ConnTestApp) -- renderer/state
+# only; the standalone scan/launch path (conn/core/conn_run.c) is deliberately
+# excluded. Lets Meridian render its own scanned menu through the Conn UI.
+    conn/core/paint.c
+    conn/core/grid.c
+    conn/core/widget_clock.c
+    conn/core/widget_editline.c
+    conn/core/widget_list.c
+    conn/core/widget_panel.c
+    conn/core/text_gop.c
+    conn/efi/text_conout.c
+    conn/efi/pointer.c
+    conn/core/ui.c
+    conn/core/app.c
+    ui/conn_bridge.c
+    mok/mok.c
+    mok/guid.c
+    mok/security_policy.c
+    mok/simple_file.c
+# Added by Jief_Machak (sf.net/u/jief7/profile) from Clover
+# Modified by dakanji (sf.net/u/dakanji/profile) as follows:
+#  - Removed unused 'Platform/DataHubCpu.c'
+#  - Moved 'Platform/BootLog.c' to 'Library/MemLogLib/BootLog.c'
+    Library/MemLogLib/BootLog.c
+
+
+[Packages]
+    MdePkg/MdePkg.dec
+    MdeModulePkg/MdeModulePkg.dec
+    ShellPkg/ShellPkg.dec
+    MeridianPkg/MeridianPkg.dec
+
+
+[Packages.XCODE]
+    StdLib/StdLib.dec
+
+
+[LibraryClasses]
+    UefiApplicationEntryPoint
+    UefiBootServicesTableLib
+    UefiLib
+    MemoryAllocationLib
+    BaseMemoryLib
+    BaseLib
+    DevicePathLib
+    DebugLib
+    DxeServicesLib
+    DxeServicesTableLib
+    HobLib
+    MemoryAllocationLib
+    IoLib
+    PerformanceLib
+    FileHandleLib
+    UefiBootManagerLib
+# For Debug logging ... Jief_Machak (sf.net/u/jief7/profile) from Clover
+    MemLogLib
+# For AcquireGOP
+    HandleParsingLib
+# Based on OcApfsLib from OpenCore
+    MeridianApfsLib
+# For SupplyNVME
+    NvmExpressLib
+    StateMachineLib
+
+
+
+[Guids]
+    gEfiDxeServicesTableGuid                                                ## CONSUMES           ## GUID
+    gEfiGlobalVariableGuid                                                  ## SOMETIMES_CONSUMES ## GUID
+    gEfiImageSecurityDatabaseGuid                                           ## SOMETIMES_CONSUMES ## GUID
+    gEfiEventVirtualAddressChangeGuid                                       ## SOMETIMES_CONSUMES ## GUID
+    gEfiEventExitBootServicesGuid                                           ## SOMETIMES_CONSUMES ## GUID
+    gEfiFileInfoGuid                                                        ## CONSUMES           ## GUID
+    gEfiFileSystemInfoGuid                                                  ## CONSUMES           ## GUID
+    gEfiSasDevicePathGuid                                                   ## SOMETIMES_CONSUMES ## GUID
+    gEfiAcpiTableGuid                                                       ## SOMETIMES_CONSUMES ## GUID
+    gEfiAcpi10TableGuid                                                     ## SOMETIMES_CONSUMES ## GUID
+
+
+[Ppis]
+
+
+[Protocols]
+    gEfiComponentName2ProtocolGuid                                          ## CONSUMES
+    gEfiDevicePathToTextProtocolGuid                                        ## CONSUMES
+    gEfiSimpleFileSystemProtocolGuid                                        ## CONSUMES
+    gEfiUnicodeCollationProtocolGuid                                        ## CONSUMES
+    gEfiUnicodeCollation2ProtocolGuid                                       ## CONSUMES
+    gEfiBlockIoProtocolGuid                                                 ## CONSUMES
+    gEfiDebugPortProtocolGuid                                               ## CONSUMES
+    gEfiDevicePathProtocolGuid                                              ## CONSUMES
+    gEfiDiskIoProtocolGuid                                                  ## CONSUMES
+    gEfiLoadedImageProtocolGuid                                             ## CONSUMES
+    gEfiPciIoProtocolGuid                                                   ## CONSUMES
+    gEfiPciRootBridgeIoProtocolGuid                                         ## CONSUMES
+    gEfiUsbIoProtocolGuid                                                   ## CONSUMES
+    gEfiNvmExpressPassThruProtocolGuid                                      ## CONSUMES
+    gEfiEdidDiscoveredProtocolGuid                                          ## CONSUMES
+    gEfiEdidActiveProtocolGuid                                              ## CONSUMES
+    gEfiTcg2ProtocolGuid                                                    ## CONSUMES
+    gEfiSerialIoProtocolGuid                                                ## CONSUMES
+    gEfiRngProtocolGuid                                                     ## SOMETIMES_CONSUMES
+    gEfiAbsolutePointerProtocolGuid                                         ## SOMETIMES_CONSUMES
+    gEfiSimplePointerProtocolGuid                                           ## SOMETIMES_CONSUMES
+    gEfiDriverConfigurationProtocolGuid                                     ## CONSUMES
+    gEfiDriverDiagnosticsProtocolGuid                                       ## CONSUMES
+    gEfiComponentNameProtocolGuid                                           ## CONSUMES
+    gEfiDriverBindingProtocolGuid                                           ## SOMETIMES_CONSUMES
+    gEfiGraphicsOutputProtocolGuid                                          ## SOMETIMES_CONSUMES
+    gEfiMpServiceProtocolGuid                                               ## SOMETIMES_CONSUMES
+    gEfiIp4Config2ProtocolGuid                                             ## SOMETIMES_CONSUMES
+    gEfiSimpleNetworkProtocolGuid                                          ## SOMETIMES_CONSUMES
+    gEfiPxeBaseCodeProtocolGuid                                            ## SOMETIMES_CONSUMES
+    gEfiDhcp4ServiceBindingProtocolGuid                                    ## SOMETIMES_CONSUMES
+    gEfiDhcp4ProtocolGuid                                                  ## SOMETIMES_CONSUMES
+
+
+[FeaturePcd]
