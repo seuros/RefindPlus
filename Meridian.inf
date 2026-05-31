@@ -74,7 +74,6 @@
     lib/str_merge.c
     lib/str_guid.c
     lib/str_format.c
-    loaders/osdetect.c
     loaders/limine/detect.c
     loaders/limine/elf.c
     loaders/limine/requests.c
