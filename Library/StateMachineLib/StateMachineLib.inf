@@ -1,0 +1,35 @@
+## @file
+#  StateMachineLib - EDK2 wrapper around the libstatemachines runtime.
+#
+#  Compiles the submodule runtime (libstatemachines/src/state_machine.c) under
+#  its freestanding profile, so Meridian can drive table-defined FSMs with zero
+#  heap and no standard library. STATE_MACHINE_FREESTANDING makes the library
+#  pull <state_machine_port.h>; we supply that header from this directory (it
+#  maps the contract onto <Uefi.h>) and put this dir first on the include path,
+#  so the library never pulls its own ports/ reference. All UEFI knowledge stays
+#  here in MeridianPkg.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = StateMachineLib
+    FILE_GUID      = db4a35d0-b21f-4204-96cf-7df41dc0dd28
+    MODULE_TYPE    = BASE
+    VERSION_STRING = 0.1.0
+    LIBRARY_CLASS  = StateMachineLib
+
+[Sources]
+    ../../libstatemachines/src/state_machine.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+
+[BuildOptions]
+    # Select the freestanding profile and supply our UEFI port ahead of the
+    # library's public headers. Port dir MUST precede the library include dir so
+    # <state_machine_port.h> resolves to ours. The package is mounted at
+    # $(WORKSPACE)/MeridianPkg per scripts/build.sh.
+    *_*_*_CC_FLAGS = -DSTATE_MACHINE_FREESTANDING -I$(WORKSPACE)/MeridianPkg/Library/StateMachineLib -I$(WORKSPACE)/MeridianPkg/libstatemachines/include
