@@ -1,0 +1,32 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repository:
+    name: Repository Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Python tooling
+        run: python3 -m pip install --user reuse pre-commit
+
+      - name: Run checks
+        run: ./scripts/check.sh
+
+      - name: Validate build wrapper
+        run: |
+          mkdir -p /tmp/meridian-edk2
+          ln -s "${GITHUB_WORKSPACE}" /tmp/meridian-edk2/MeridianPkg
+          ./scripts/build.sh --workspace /tmp/meridian-edk2 --dry-run
