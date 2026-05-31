@@ -1,28 +1,7 @@
-/* $Id: fsw_hfs.h 29125 2010-05-06 09:43:05Z vboxsync $ */
-/** @file
- * fsw_hfs.h - HFS file system driver header.
- */
-
-/*
- * Copyright (C) 2010 Oracle Corporation
- *
- * This file is part of VirtualBox Open Source Edition (OSE), as
- * available from http://www.virtualbox.org. This file is free software;
- * you can redistribute it and/or modify it under the terms of the GNU
- * General Public License (GPL) as published by the Free Software
- * Foundation, in version 2 as it comes in the "COPYING" file of the
- * VirtualBox OSE distribution. VirtualBox OSE is distributed in the
- * hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
- */
-/*
- * Modified for rEFInd by Roderick W Smith
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2020-2025 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2025 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #ifndef _FSW_HFS_H_
 #define _FSW_HFS_H_
@@ -32,14 +11,10 @@
 
 #include "fsw_core.h"
 
-
-//! Block size for HFS volumes.
 #define HFS_BLOCKSIZE            512
 
-//! Block number where the HFS superblock resides.
 #define HFS_SUPERBLOCK_BLOCKNO   2
 
-/* Make world look Applish enough for the system header describing HFS layout  */
 #define __APPLE_API_PRIVATE
 #define __APPLE_API_UNSTABLE
 
@@ -65,9 +40,7 @@
 
 #pragma pack(push, 1)
 #ifdef _MSC_VER
-/* vasily: disable warning for non-standard anonymous struct/union
- * declarations
- */
+
 # pragma warning (disable:4201)
 # define inline __inline
 #endif
@@ -82,37 +55,30 @@ struct fsw_hfs_key
   {
     struct HFSPlusExtentKey  ext_key;
     struct HFSPlusCatalogKey cat_key;
-    fsw_u16                  key_len; /* Length is at the beginning of all keys */
+    fsw_u16                  key_len;
   } HFS_ALIGNMENT;
 } HFS_ALIGNMENT;
 
 #pragma pack(pop)
 
 typedef enum {
-    /* Regular HFS */
+
     FSW_HFS_PLAIN = 0,
-    /* HFS+ */
+
     FSW_HFS_PLUS,
-    /* HFS+ embedded to HFS */
+
     FSW_HFS_PLUS_EMB
 } fsw_hfs_kind;
 
-/**
- * HFS: Dnode structure with HFS-specific data.
- */
-
 struct fsw_hfs_dnode
 {
-  struct fsw_dnode          g;          //!< Generic dnode structure
+  struct fsw_dnode          g;
   HFSPlusExtentRecord       extents;
   fsw_u32                   ctime;
   fsw_u32                   mtime;
   fsw_u64                   used_bytes;
 };
 
-/**
- * HFS: In-memory B-tree structure.
- */
 struct fsw_hfs_btree
 {
     fsw_u32                  root_node;
@@ -120,18 +86,13 @@ struct fsw_hfs_btree
     struct fsw_hfs_dnode*    file;
 };
 
-
-/**
- * HFS: In-memory volume structure with HFS-specific data.
- */
-
 struct fsw_hfs_volume
 {
-    struct fsw_volume            g;            //!< Generic volume structure
+    struct fsw_volume            g;
 
-    struct HFSPlusVolumeHeader   *primary_voldesc;  //!< Volume Descriptor
-    struct fsw_hfs_btree          catalog_tree;     // Catalog tree
-    struct fsw_hfs_btree          extents_tree;     // Extents overflow tree
+    struct HFSPlusVolumeHeader   *primary_voldesc;
+    struct fsw_hfs_btree          catalog_tree;
+    struct fsw_hfs_btree          extents_tree;
     struct fsw_hfs_dnode          root_file;
     int                           case_sensitive;
     fsw_u32                       block_size_shift;
@@ -139,7 +100,6 @@ struct fsw_hfs_volume
     fsw_u32                       emb_block_off;
 };
 
-/* Endianess swappers */
 static inline fsw_u16
 swab16(fsw_u16 x)
 {
@@ -154,7 +114,6 @@ swab32(fsw_u32 x)
             (x & (fsw_u32)0x0000ff00UL)<<8 |
             (x & (fsw_u32)0x00ff0000UL)>>8;
 }
-
 
 static inline fsw_u64
 swab64(fsw_u64 x)
@@ -179,7 +138,6 @@ cpu_to_be16(fsw_u16 x)
 {
     return swab16(x);
 }
-
 
 static inline fsw_u32
 cpu_to_be32(fsw_u32 x)

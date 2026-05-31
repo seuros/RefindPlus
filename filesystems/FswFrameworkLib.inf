@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+## @file
+#
+# FswFrameworkLib: the shared rEFInd-derived "fsw" filesystem framework
+# (core, EFI glue, utilities) built once and linked into every Meridian
+# filesystem driver. Each driver supplies only its own fsw_<fstype>.c plus the
+# fsw_active_fstype_table / fsw_active_fstype_name bindings consumed here.
+#
+# The driver entry point (fsw_efi_main) lives in fsw_efi.c and is resolved from
+# this library by the consuming driver's ENTRY_POINT.
+#
+##
+
+[Defines]
+    INF_VERSION               = 0x00010005
+    BASE_NAME                 = FswFrameworkLib
+    FILE_GUID                 = 7c2f9e64-3a1d-4b8e-9c0a-1f6d2b5e84a0
+    MODULE_TYPE               = UEFI_DRIVER
+    VERSION_STRING            = 1.0
+    LIBRARY_CLASS             = FswFrameworkLib|UEFI_DRIVER
+
+#
+# VALID_ARCHITECTURES = X64 AARCH64
+#
+
+[Sources]
+    fsw_core.c
+    fsw_efi.c
+    fsw_lib.c
+    fsw_efi_lib.c
+    fsw_intrinsics.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+    MdeModulePkg/MdeModulePkg.dec
+    MeridianPkg/MeridianPkg.dec
+
+[LibraryClasses]
+    BaseLib
+    BaseMemoryLib
+    MemoryAllocationLib
+    UefiBootServicesTableLib
+    UefiLib
+    DxeServicesLib
+    DxeServicesTableLib
+    DevicePathLib
+    PrintLib
+
+[LibraryClasses.AARCH64]
+    BaseStackCheckLib
+    CompilerIntrinsicsLib

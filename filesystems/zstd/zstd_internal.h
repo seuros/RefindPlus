@@ -14,7 +14,7 @@
  * ("BSD").
  */
 /**
-** Modified for RefindPlus
+** Modified for Meridian
 ** Copyright (c) 2025-2026 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.
@@ -31,9 +31,9 @@
 #endif
 
 #if __has_attribute(always_inline)
-#define FORCE_INLINE __attribute__((always_inline))
+#define FORCE_INLINE static inline __attribute__((always_inline))
 #else
-#define FORCE_INLINE static __always_inline
+#define FORCE_INLINE static inline __always_inline
 #endif
 
 #define FORCE_NOINLINE static /*noinline*/
@@ -45,7 +45,7 @@
 #include "mem.h"
 #include "xxhash.h"
 #include "zstd.h"
-#include "../fsw_efi_base.h"
+#include "fsw_efi_base.h"
 
 /**************************************
 *  shared macros

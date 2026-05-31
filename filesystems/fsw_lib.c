@@ -1,55 +1,11 @@
-/**
- * \file fsw_lib.c
- * Core file system wrapper library functions.
-**/
-
-/**
- * Copyright (c) 2006 Christoph Pfisterer
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the
- *    distribution.
- *
- *  * Neither the name of Christoph Pfisterer nor the names of the
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**/
-/**
-** Modified for RefindPlus
-** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the MIT License.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #include "fsw_core.h"
 
-/* Include generated string encoding specific functions */
 #include "fsw_strfunc.h"
-
-
-/**
- * Allocate memory and clear it.
- */
 
 fsw_status_t fsw_alloc_zero (
     int    len,
@@ -64,10 +20,6 @@ fsw_status_t fsw_alloc_zero (
 
     return FSW_SUCCESS;
 }
-
-/**
- * Duplicate a piece of data.
- */
 
 fsw_status_t fsw_memdup (
     void **dest_out,
@@ -84,10 +36,6 @@ fsw_status_t fsw_memdup (
     return FSW_SUCCESS;
 }
 
-/**
- * Get the length of a string. Returns the number of characters in the string.
- */
-
 int fsw_strlen (
     struct fsw_string *s
 ) {
@@ -98,19 +46,12 @@ int fsw_strlen (
     return s->len;
 }
 
-/**
- * Compare two strings for equality. The two strings are compared, taking their
- * encoding into account. If they are considered equal, boolean true is returned.
- * Otherwise, boolean false is returned.
- */
-
 int fsw_streq (
     struct fsw_string *s1,
     struct fsw_string *s2
 ) {
     struct fsw_string temp_s;
 
-    // Handle empty strings
     if (s1->type == FSW_STRING_TYPE_EMPTY ||
         s2->type == FSW_STRING_TYPE_EMPTY
     ) {
@@ -125,13 +66,11 @@ int fsw_streq (
         return fsw_streq(s1, &temp_s);
     }
 
-    // Check length (count of chars)
     if (s1->len != s2->len) return 0;
-    if (s1->len == 0)       return 1;  // Both strings are empty
-
+    if (s1->len == 0)       return 1;
 
     if (s1->type == s2->type) {
-        // Same type, do a dumb memory compare
+
         if (s1->size != s2->size) return 0;
 
         return FSW_DO_MEMEQ(
@@ -141,7 +80,6 @@ int fsw_streq (
         );
     }
 
-    // Dispatch to type-specific functions
     #define STREQ_DISPATCH(type1, type2)                                              \
       if (s1->type == FSW_STRING_TYPE_##type1 && s2->type == FSW_STRING_TYPE_##type2) \
         return fsw_streq_##type1##_##type2(s1->data, s2->data, s1->len);              \
@@ -154,16 +92,8 @@ int fsw_streq (
     STREQ_DISPATCH(UTF16,    UTF16_SWAP);
     STREQ_DISPATCH(UTF08,    UTF16_SWAP);
 
-    // final fallback
     return 0;
 }
-
-/**
- * Compare a string with a C string constant. This sets up a string descriptor
- * for the string constant (second argument) and runs fsw_streq on the two
- * strings. Currently the C string is interpreted as ISO 8859-1.
- * Returns boolean true if the strings are considered equal, boolean false otherwise.
- */
 
 int fsw_streq_cstr (
     struct fsw_string *s1,
@@ -180,12 +110,6 @@ int fsw_streq_cstr (
 
     return fsw_streq (s1, &temp_s);
 }
-
-/**
- * Creates a duplicate of a string, converting it to the given encoding during the copy.
- * If the function returns FSW_SUCCESS, the caller must free the string later with
- * fsw_strfree.
- */
 
 fsw_status_t fsw_strdup_coerce (
     struct fsw_string *dest,
@@ -214,7 +138,6 @@ fsw_status_t fsw_strdup_coerce (
         return FSW_SUCCESS;
     }
 
-    // Dispatch to type-specific functions
     #define STRCOERCE_DISPATCH(type1, type2)                                       \
       if (src->type == FSW_STRING_TYPE_##type1 && type == FSW_STRING_TYPE_##type2) \
         return fsw_strcoerce_##type1##_##type2(src->data, src->len, dest);
@@ -230,22 +153,6 @@ fsw_status_t fsw_strdup_coerce (
 
     return FSW_UNSUPPORTED;
 }
-
-/**
- * Splits a string at the first occurence of the separator character.
- * The buffer string is searched for the separator character. If it is found, the
- * element string descriptor is filled to point at the part of the buffer string
- * before the separator. The buffer string itself is adjusted to point at the
- * remaining part of the string (without the separator).
- *
- * If the separator is not found in the buffer string, then element is changed to
- * point at the whole buffer string, and the buffer string itself is changed into
- * an empty string.
- *
- * This function only manipulates the pointers and lengths in the two string descriptors,
- * it does not change the actual string. If the buffer string is dynamically allocated,
- * you must make a copy of it so that you can release it later.
- */
 
 void fsw_strsplit (
     struct fsw_string *element,
@@ -309,16 +216,11 @@ void fsw_strsplit (
 
     }
     else {
-        // Fallback
+
         buffer->type = FSW_STRING_TYPE_EMPTY;
     }
 
-    // TODO: support UTF-8 and UTF-16_SWAP
 }
-
-/**
- * Frees memory used by a string returned from fsw_strdup_coerce.
- */
 
 void fsw_strfree (struct fsw_string *s) {
     if (s->type != FSW_STRING_TYPE_EMPTY && s->data) {

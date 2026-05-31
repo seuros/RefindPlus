@@ -37,7 +37,7 @@
  * - Source repository : https://github.com/Cyan4973/FiniteStateEntropy
  */
 /**
-** Modified for RefindPlus ... Added FSE_MEMxyz calls
+** Modified for Meridian ... Added FSE_MEMxyz calls
 ** Copyright (c) 2025 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.
@@ -237,7 +237,7 @@ FORCE_INLINE size_t FSE_decompress_usingDTable_generic(void *dst, size_t maxDstS
 			*op++ = FSE_GETSYMBOL(&state1);
 			break;
 		}
-	} // while {Infinite}
+	}
 
 	return op - ostart;
 }

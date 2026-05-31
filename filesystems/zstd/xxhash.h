@@ -38,7 +38,7 @@
  * - xxHash source repository: https://github.com/Cyan4973/xxHash
  */
 /**
-** Modified for RefindPlus
+** Modified for Meridian
 ** Copyright (c) 2021 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.

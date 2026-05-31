@@ -1,45 +1,7 @@
-/* $Id: fsw_iso9660.h 29125 2010-05-06 09:43:05Z vboxsync $ */
-/** @file
- * fsw_iso9660.h - ISO9660 file system driver header.
- */
-
-/*
- * Copyright (c) 2006 Christoph Pfisterer
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the
- *    distribution.
- *
- *  * Neither the name of Christoph Pfisterer nor the names of the
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the MIT License.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #ifndef _FSW_ISO9660_H_
 #define _FSW_ISO9660_H_
@@ -48,15 +10,10 @@
 #define DNODESTRUCTNAME fsw_iso9660_dnode
 #include "fsw_core.h"
 
-
-//! Block size for ISO9660 volumes.
 #define ISO9660_BLOCKSIZE          2048
 #define ISO9660_BLOCKSIZE_BITS       11
-//! Block number where the ISO9660 superblock resides.
+
 #define ISO9660_SUPERBLOCK_BLOCKNO   16
-//Slice - we already have shifted blockIO by 16
-//but we should use ParentBlockIo
-//#define ISO9660_SUPERBLOCK_BLOCKNO   0
 
 #pragma pack(push, 1)
 
@@ -85,9 +42,6 @@ struct iso9660_dirrec {
     fsw_u8      file_identifier_length;
     char        file_identifier[1];
 };
-//#if sizeof (struct fsw_iso9660_dirrec) != 34
-//#fail Structure fsw_iso9660_dirrec has wrong size
-//#endif
 
 struct iso9660_volume_descriptor {
     fsw_u8      volume_descriptor_type;
@@ -132,9 +86,6 @@ struct iso9660_primary_volume_descriptor {
     fsw_u8      application_use[512];
     fsw_u8      reserved2[653];
 };
-//#if sizeof (struct fsw_iso9660_volume_descriptor) != 2048
-//#fail Structure fsw_iso9660_volume_descriptor has wrong size
-//#endif
 
 #pragma pack(pop)
 
@@ -145,33 +96,23 @@ struct iso9660_dirrec_buffer {
     char        dirrec_buffer[222];
 };
 
-
-/**
- * ISO9660: Volume structure with ISO9660-specific data.
- */
-
 struct fsw_iso9660_volume {
-    struct fsw_volume g;            //!< Generic volume structure
-    /*Note: do not move g!*/
+    struct fsw_volume g;
+
     int fJoliet;
-    /*Joliet specific fields*/
+
     int fRockRidge;
-    /*Rock Ridge specific fields*/
+
     int rr_susp_skip;
 
-    struct iso9660_primary_volume_descriptor *primary_voldesc;  //!< Full Primary Volume Descriptor
+    struct iso9660_primary_volume_descriptor *primary_voldesc;
 };
-
-/**
- * ISO9660: Dnode structure with ISO9660-specific data.
- */
 
 struct fsw_iso9660_dnode {
-    struct fsw_dnode g;             //!< Generic dnode structure
+    struct fsw_dnode g;
 
-    struct iso9660_dirrec dirrec;   //!< Fixed part of the directory record (i.e. w/o name)
+    struct iso9660_dirrec dirrec;
 };
-
 
 struct fsw_rock_ridge_susp_entry
 {

@@ -1,19 +1,10 @@
-/**
-** fsw_btrfs.h:
-** Header file for btrfs UEFI driver.
-** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Portions Copyright (c) 2013 Tencent, Inc.
-** Portions Copyright (c) 2021 Roderick W Smith
-**
-** Distributed under the terms of the GNU General Public License
-** as published by the Free Software Foundation, either version 3
-** of the License, or (at your option) any later version.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2010-2021 Free Software Foundation, Inc.
 
 #ifndef _FSW_BTRFS_H_
 #define _FSW_BTRFS_H_
-
 
 #include "fsw_core.h"
 #define uint8_t  fsw_u8
@@ -23,11 +14,9 @@
 #define int64_t  fsw_s64
 #define int32_t  fsw_s32
 
-// No single io/element size over 2G
 #define fsw_size_t       int
 #define fsw_ssize_t      int
 
-// Never zip over 2G, 32bit is enough
 #define grub_off_t   int32_t
 #define grub_size_t  int32_t
 #define grub_ssize_t int32_t
@@ -36,29 +25,23 @@
 #define MINILZO_CFG_SKIP_LZO_PTR          1
 #define MINILZO_CFG_SKIP_LZO_UTIL         1
 
-//#define MINILZO_CFG_SKIP_LZO_STRING     1
 #define MINILZO_CFG_SKIP_LZO_INIT         1
 #define MINILZO_CFG_SKIP_LZO1X_DECOMPRESS 1
 #define MINILZO_CFG_SKIP_LZO1X_1_COMPRESS 1
+
+#ifndef LZO_CFG_FREESTANDING
+#define LZO_CFG_FREESTANDING 1
+#endif
 #include "minilzo.c"
 #include "scandisk.c"
 
 #define BTRFS_DEFAULT_BLOCK_SIZE 4096
 #define GRUB_BTRFS_SIGNATURE "_BHRfS_M"
 
-/* from http://www.oberhumer.com/opensource/lzo/lzofaq.php
- * LZO will expand incompressible data by a little amount.
- * Suggest this formula for a worst-case expansion calculation:
- * output_block_size = input_block_size + (input_block_size / 16) + 64 + 3
-**/
 #define GRUB_BTRFS_LZO_BLOCK_SIZE 4096
 #define GRUB_BTRFS_LZO_BLOCK_MAX_CSIZE (GRUB_BTRFS_LZO_BLOCK_SIZE + \
         (GRUB_BTRFS_LZO_BLOCK_SIZE / 16) + 64 + 3)
 
-/*
- * On disk struct has prefix 'btrfs_'.
- * little endian on memory struct has 'fsw_btrfs_'.
-**/
 typedef uint8_t btrfs_checksum_t[0x20];
 typedef uint32_t btrfs_uuid_t[4];
 
@@ -114,16 +97,15 @@ struct fsw_btrfs_recover_cache {
 };
 
 struct fsw_btrfs_volume {
-    struct fsw_volume                            g; //!< Generic volume structure
+    struct fsw_volume                            g;
 
-    // Superblock shadows
     uint8_t               bootstrap_mapping[0x800];
     btrfs_uuid_t                              uuid;
     uint64_t                           total_bytes;
     uint64_t                            bytes_used;
     uint64_t                            chunk_tree;
     uint64_t                             root_tree;
-    uint64_t                              top_tree; // Top volume tree
+    uint64_t                              top_tree;
     unsigned                           num_devices;
     unsigned                           sectorshift;
     unsigned                            sectorsize;
@@ -134,7 +116,6 @@ struct fsw_btrfs_volume {
     unsigned                    n_devices_attached;
     unsigned                   n_devices_allocated;
 
-    // Cached extent data
     uint64_t                              extstart;
     uint64_t                                extend;
     uint64_t                                extino;
@@ -255,8 +236,8 @@ struct btrfs_inode {
 } __attribute__ ((__packed__));
 
 struct fsw_btrfs_dnode {
-    struct fsw_dnode         g;    //!< Generic dnode structure
-    struct btrfs_inode    *raw;    //!< Full raw inode structure
+    struct fsw_dnode         g;
+    struct btrfs_inode    *raw;
 };
 
 struct btrfs_extent_data {
@@ -305,9 +286,8 @@ struct fsw_btrfs_uuid_list {
 
 #include "fsw_btrfs_zstd.h"
 
-// x**y.
 static uint8_t powx[255 * 2];
-// Such an 's' that x**s = y
+
 static unsigned powx_inv[256];
 static const uint8_t poly = 0x1d;
 

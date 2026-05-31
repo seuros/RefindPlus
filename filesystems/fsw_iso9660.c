@@ -1,73 +1,9 @@
-/* $Id: fsw_iso9660.c 33540 2010-10-28 09:27:05Z vboxsync $ */
-/** @file
- * fsw_iso9660.c - ISO9660 file system driver code.
- *
- * Current limitations:
- *  - Files must be in one extent (i.e. Level 2)
- *  - No Joliet or Rock Ridge extensions
- *  - No interleaving
- *  - inode number generation strategy fails on volumes > 2 GB
- *  - No blocksizes != 2048
- *  - No High Sierra or anything else != 'CD001'
- *  - No volume sets with directories pointing at other volumes
- *  - No extended attribute records
- */
-
-/*
- * Copyright (C) 2010 Oracle Corporation
- *
- * This file is part of VirtualBox Open Source Edition (OSE), as
- * available from http://www.virtualbox.org. This file is free software;
- * you can redistribute it and/or modify it under the terms of the GNU
- * General Public License (GPL) as published by the Free Software
- * Foundation, in version 2 as it comes in the "COPYING" file of the
- * VirtualBox OSE distribution. VirtualBox OSE is distributed in the
- * hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
- */
-
-/*
- * This code is based on:
- *
- * Copyright (c) 2006 Christoph Pfisterer
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the
- *    distribution.
- *
- *  * Neither the name of Christoph Pfisterer nor the names of the
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2021-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the MIT License.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2021-2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #include "fsw_iso9660.h"
-
-// functions
 
 static fsw_status_t fsw_iso9660_volume_mount (
     struct fsw_iso9660_volume *vol
@@ -138,10 +74,6 @@ static fsw_status_t rr_read_ce (
     fsw_u8                       *begin
 );
 
-//
-// Dispatch Table
-//
-
 struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(iso9660) = {
     { FSW_STRING_TYPE_ISO88591, 4, 4, "iso9660" },
     sizeof (struct fsw_iso9660_volume),
@@ -158,6 +90,9 @@ struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(iso9660) = {
     fsw_iso9660_dir_read,
     fsw_iso9660_readlink,
 };
+
+struct fsw_fstype_table *fsw_active_fstype_table = &FSW_FSTYPE_TABLE_NAME(iso9660);
+CONST CHAR16            *fsw_active_fstype_name  = L"iso9660";
 
 static fsw_status_t rr_find_sp(struct iso9660_dirrec *dirrec, struct fsw_rock_ridge_susp_sp **psp)
 {
@@ -209,7 +144,7 @@ static fsw_status_t rr_find_nm(struct fsw_iso9660_volume *vol, struct iso9660_di
             if (fCe == 0)
                 fsw_alloc_zero (ISO9660_BLOCKSIZE, (void *) &begin);
             fCe = 1;
-        //    DEBUG((DEBUG_WARN, "%a:%d we found CE before NM or its continuation\n", __FILE__, __LINE__));
+
             ce = (union fsw_rock_ridge_susp_ce *)r;
             limit = ISOINT(ce->X.len);
             ce_off = ISOINT(ce->X.offset);
@@ -255,7 +190,7 @@ static fsw_status_t rr_find_nm(struct fsw_iso9660_volume *vol, struct iso9660_di
                     FSW_DO_MEMCPY(tmp, str->data, str->len);
                     FSW_DO_FREE(str->data);
                 }
-           //     DEBUG((DEBUG_INFO, "dst:%p src:%p len:%d\n", tmp + str->len, &nm->name[0], len));
+
                 FSW_DO_MEMCPY(tmp + str->len, &nm->name[0], len);
                 str->data = tmp;
                 str->len += len;
@@ -281,33 +216,13 @@ done:
 static fsw_status_t rr_read_ce(struct fsw_iso9660_volume *vol, union fsw_rock_ridge_susp_ce *ce, fsw_u8 *begin)
 {
     int rc;
-//    int i;
-//    fsw_u8 *r = begin + ISOINT(ce->X.offset);
-//    int len = ISOINT(ce->X.len);
+
     rc = vol->g.host_table->read_block(&vol->g, ISOINT(ce->X.block_loc), begin);
     if (rc != FSW_SUCCESS)
         return rc;
-/*    for (i = 0; i < len; ++i)
-    {
-        DEBUG((DEBUG_INFO, "%d: (%d:%x)%c ", i, r[i], r[i], r[i]));
-    }*/
+
     return FSW_SUCCESS;
 }
-/*
-static void dump_dirrec(struct iso9660_dirrec *dirrec)
-{
-    int i;
-    fsw_u8 *r = (fsw_u8 *)dirrec + dirrec->file_identifier_length;
-    int len = dirrec->dirrec_length;
-    for (i = dirrec->file_identifier_length; i < len; ++i)
-    {
-        DEBUG((DEBUG_INFO, "%d: (%d:%x)%c ", i, r[i], r[i], r[i]));
-    }
-}*/
-/**
- * Mount an ISO9660 volume. Reads the superblock and constructs the
- * root directory dnode.
- */
 
 static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
 {
@@ -324,7 +239,6 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
     char *sig;
     struct fsw_rock_ridge_susp_entry *entry;
 
-    // read through the Volume Descriptor Set
     fsw_set_blocksize (vol, ISO9660_BLOCKSIZE, ISO9660_BLOCKSIZE);
     blockno = ISO9660_SUPERBLOCK_BLOCKNO;
 
@@ -336,9 +250,9 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
         voldesc = (struct iso9660_volume_descriptor *)buffer;
         voldesc_type = voldesc->volume_descriptor_type;
         if (FSW_DO_MEMEQ(voldesc->standard_identifier, "CD001", 5)) {
-            // descriptor follows ISO 9660 standard
+
             if (voldesc_type == 1 && voldesc->volume_descriptor_version == 1) {
-                // suitable Primary Volume Descriptor found
+
                 if (vol->primary_voldesc) {
                     FSW_DO_FREE(vol->primary_voldesc);
                     vol->primary_voldesc = NULL;
@@ -346,7 +260,7 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
                 status = fsw_memdup((void **) &vol->primary_voldesc, voldesc, ISO9660_BLOCKSIZE);
             }
         } else if (!FSW_DO_MEMEQ(voldesc->standard_identifier, "CD", 2)) {
-            // Completely alien standard identifier, stop reading
+
             voldesc_type = 255;
         }
 
@@ -356,14 +270,10 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
     if (status)
         return status;
 
-    // Get information from Primary Volume Descriptor
     if (vol->primary_voldesc == NULL)
         return FSW_UNSUPPORTED;
     pvoldesc = vol->primary_voldesc;
-//     if (ISOINT(pvoldesc->logical_block_size) != 2048)
-//         return FSW_UNSUPPORTED;
 
-    // Get volume name
     for (i = 32; i > 0; i--)
         if (pvoldesc->volume_identifier[i-1] != ' ')
             break;
@@ -374,7 +284,6 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
     if (status)
         return status;
 
-    // setup the root dnode
     status = fsw_dnode_create_root(vol, ISO9660_SUPERBLOCK_BLOCKNO << ISO9660_BLOCKSIZE_BITS, &vol->g.root);
     if (status)
         return status;
@@ -393,7 +302,6 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
         ));
         vol->fJoliet = 1;
     }
-
 
     rootdir = pvoldesc->root_directory;
     sua_pos = (sizeof (struct iso9660_dirrec)) +
@@ -428,7 +336,7 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
         }
     }
 #endif
-    // release volume descriptors
+
     FSW_DO_FREE(vol->primary_voldesc);
     vol->primary_voldesc = NULL;
 
@@ -441,40 +349,22 @@ static fsw_status_t fsw_iso9660_volume_mount(struct fsw_iso9660_volume *vol)
     return FSW_SUCCESS;
 }
 
-/**
- * Free the volume data structure. Called by the core after an unmount or after
- * an unsuccessful mount to release the memory used by the file system type specific
- * part of the volume structure.
- */
-
 static void fsw_iso9660_volume_free(struct fsw_iso9660_volume *vol)
 {
     if (vol->primary_voldesc)
         FSW_DO_FREE(vol->primary_voldesc);
 }
 
-/**
- * Get in-depth information on a volume.
- */
-
 static fsw_status_t fsw_iso9660_volume_stat(struct fsw_iso9660_volume *vol, struct fsw_volume_stat *sb)
 {
-    sb->total_bytes = 0; //(fsw_u64)vol->sb->s_blocks_count      * vol->g.log_blocksize;
+    sb->total_bytes = 0;
     sb->free_bytes  = 0;
     return FSW_SUCCESS;
 }
 
-/**
- * Get full information on a dnode from disk. This function is called by the core
- * whenever it needs to access fields in the dnode structure that may not
- * be filled immediately upon creation of the dnode. In the case of iso9660, we
- * delay fetching of the inode structure until dnode_fill is called. The size and
- * type fields are invalid until this function has been called.
- */
-
 static fsw_status_t fsw_iso9660_dnode_fill(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno)
 {
-    // Get info from the directory record
+
     dno->g.size = ISOINT(dno->dirrec.data_length);
     if (dno->dirrec.file_flags & 0x02)
         dno->g.type = FSW_DNODE_TYPE_DIR;
@@ -484,51 +374,21 @@ static fsw_status_t fsw_iso9660_dnode_fill(struct fsw_iso9660_volume *vol, struc
     return FSW_SUCCESS;
 }
 
-/**
- * Free the dnode data structure. Called by the core when deallocating a dnode
- * structure to release the memory used by the file system type specific part
- * of the dnode structure.
- */
-
 static void fsw_iso9660_dnode_free(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno)
 {
 }
-
-/**
- * Get in-depth information on a dnode. The core makes sure that fsw_iso9660_dnode_fill
- * has been called on the dnode before this function is called. Note that some
- * data is not directly stored into the structure, but passed to a host-specific
- * callback that converts it to the host-specific format.
- */
 
 static fsw_status_t fsw_iso9660_dnode_stat(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno,
                                            struct fsw_dnode_stat *sb)
 {
     sb->used_bytes = (dno->g.size + (ISO9660_BLOCKSIZE-1)) & ~(ISO9660_BLOCKSIZE-1);
-    /*
-    fsw_store_time_posix(sb, FSW_DNODE_STAT_CTIME, dno->raw->i_ctime);
-    fsw_store_time_posix(sb, FSW_DNODE_STAT_ATIME, dno->raw->i_atime);
-    fsw_store_time_posix(sb, FSW_DNODE_STAT_MTIME, dno->raw->i_mtime);
-    fsw_store_attr_posix(sb, dno->raw->i_mode);
-    */
 
     return FSW_SUCCESS;
 }
 
-/**
- * Retrieve file data mapping information. This function is called by the core when
- * fsw_shandle_read needs to know where on the disk the required piece of the file's
- * data can be found. The core makes sure that fsw_iso9660_dnode_fill has been called
- * on the dnode before. Our task here is to get the physical disk block number for
- * the requested logical block number.
- */
-
 static fsw_status_t fsw_iso9660_get_extent(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno,
                                            struct fsw_extent *extent)
 {
-    // Preconditions: The caller has checked that the requested logical block
-    //  is within the file's size. The dnode has complete information, i.e.
-    //  fsw_iso9660_dnode_read_info was called successfully on it.
 
     extent->type = FSW_EXTENT_TYPE_PHYSBLOCK;
     extent->phys_start = ISOINT(dno->dirrec.extent_location);
@@ -536,13 +396,6 @@ static fsw_status_t fsw_iso9660_get_extent(struct fsw_iso9660_volume *vol, struc
     extent->log_count = (ISOINT(dno->dirrec.data_length) + (ISO9660_BLOCKSIZE-1)) >> ISO9660_BLOCKSIZE_BITS;
     return FSW_SUCCESS;
 }
-
-/**
- * Lookup a directory's child dnode by name. This function is called on a directory
- * to retrieve the directory entry with the given name. A dnode is constructed for
- * this entry and returned. The core makes sure that fsw_iso9660_dnode_fill has been called
- * and the dnode is actually a directory.
- */
 
 static fsw_status_t fsw_iso9660_dir_lookup(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno,
                                            struct fsw_string *lookup_name, struct fsw_iso9660_dnode **child_dno_out)
@@ -552,38 +405,31 @@ static fsw_status_t fsw_iso9660_dir_lookup(struct fsw_iso9660_volume *vol, struc
     struct iso9660_dirrec_buffer dirrec_buffer;
     struct iso9660_dirrec *dirrec = &dirrec_buffer.dirrec;
 
-    // Preconditions: The caller has checked that dno is a directory node.
-
-    // setup handle to read the directory
     status = fsw_shandle_open(dno, &shand);
     if (status)
         return status;
 
     dirrec_buffer.ino = 0;
 
-    // scan the directory for the file
     while (1) {
-        // read next entry
+
         status = fsw_iso9660_read_dirrec(vol, &shand, &dirrec_buffer);
         if (status)
             goto errorexit;
         if (dirrec->dirrec_length == 0) {
-            // end of directory reached
+
             status = FSW_NOT_FOUND;
             goto errorexit;
         }
 
-        // skip . and ..
         if (dirrec->file_identifier_length == 1 &&
             (dirrec->file_identifier[0] == 0 || dirrec->file_identifier[0] == 1))
             continue;
 
-        // compare name
-        if (fsw_streq(lookup_name, &dirrec_buffer.name))  // TODO: compare case-insensitively
+        if (fsw_streq(lookup_name, &dirrec_buffer.name))
             break;
-    } // while {Infinite}
+    }
 
-    // setup a dnode for the child item
     status = fsw_dnode_create(dno, dirrec_buffer.ino, FSW_DNODE_TYPE_UNKNOWN, &dirrec_buffer.name, child_dno_out);
     if (status == FSW_SUCCESS)
         FSW_DO_MEMCPY(&(*child_dno_out)->dirrec, dirrec, sizeof (struct iso9660_dirrec));
@@ -593,14 +439,6 @@ errorexit:
     return status;
 }
 
-/**
- * Get the next directory entry when reading a directory. This function is called during
- * directory iteration to retrieve the next directory entry. A dnode is constructed for
- * the entry and returned. The core makes sure that fsw_iso9660_dnode_fill has been called
- * and the dnode is actually a directory. The shandle provided by the caller is used to
- * record the position in the directory between calls.
- */
-
 static fsw_status_t fsw_iso9660_dir_read(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno,
                                          struct fsw_shandle *shand, struct fsw_iso9660_dnode **child_dno_out)
 {
@@ -608,49 +446,34 @@ static fsw_status_t fsw_iso9660_dir_read(struct fsw_iso9660_volume *vol, struct 
     struct iso9660_dirrec_buffer dirrec_buffer;
     struct iso9660_dirrec *dirrec = &dirrec_buffer.dirrec;
 
-    // Preconditions: The caller has checked that dno is a directory node. The caller
-    //  has opened a storage handle to the directory's storage and keeps it around between
-    //  calls.
-    /* (vasily) directory nodes are 4096 bytes that is two logical blocks so read dir operation
-     * should read both blocks.
-     */
-
     dirrec_buffer.ino = 0;
 
     while (1) {
-        // read next entry
+
         if (shand->pos >= dno->g.size)
-            return FSW_NOT_FOUND; // end of directory
+            return FSW_NOT_FOUND;
         status = fsw_iso9660_read_dirrec(vol, shand, &dirrec_buffer);
         if (status)
             return status;
         if (dirrec->dirrec_length == 0)
         {
-            // try the next block
+
             shand->pos =(shand->pos & ~(vol->g.log_blocksize - 1)) + vol->g.log_blocksize;
             continue;
         }
 
-        // skip . and ..
         if (dirrec->file_identifier_length == 1 &&
             (dirrec->file_identifier[0] == 0 || dirrec->file_identifier[0] == 1))
             continue;
         break;
-    } // while {Infinite}
+    }
 
-    // setup a dnode for the child item
     status = fsw_dnode_create(dno, dirrec_buffer.ino, FSW_DNODE_TYPE_UNKNOWN, &dirrec_buffer.name, child_dno_out);
     if (status == FSW_SUCCESS)
         FSW_DO_MEMCPY(&(*child_dno_out)->dirrec, dirrec, sizeof (struct iso9660_dirrec));
 
     return status;
 }
-
-/**
- * Read a directory entry from the directory's raw data. This internal function is used
- * to read a raw iso9660 directory entry into memory. The shandle's position pointer is adjusted
- * to point to the next entry.
- */
 
 static fsw_status_t fsw_iso9660_read_dirrec(struct fsw_iso9660_volume *vol, struct fsw_shandle *shand, struct iso9660_dirrec_buffer *dirrec_buffer)
 {
@@ -665,12 +488,11 @@ static fsw_status_t fsw_iso9660_read_dirrec(struct fsw_iso9660_volume *vol, stru
                           << ISO9660_BLOCKSIZE_BITS)
         + (fsw_u32)shand->pos;
 
-    // read fixed size part of directory record
     buffer_size = 33;
     status = fsw_shandle_read(shand, &buffer_size, dirrec);
     if (status)
     {
-    //    DEBUG((DEBUG_INFO, "%a:%d \n", __FILE__, __LINE__));
+
         return status;
     }
 
@@ -682,9 +504,6 @@ static fsw_status_t fsw_iso9660_read_dirrec(struct fsw_iso9660_volume *vol, stru
         dirrec->dirrec_length < 33 + dirrec->file_identifier_length)
         return FSW_VOLUME_CORRUPTED;
 
-//    DEBUG((DEBUG_INFO, "%a:%d, dirrec_length: %d\n", __FILE__, __LINE__, dirrec->dirrec_length));
-
-    // read variable size part of directory record
     buffer_size = remaining_size = dirrec->dirrec_length - 33;
     status = fsw_shandle_read(shand, &buffer_size, dirrec->file_identifier);
     if (status)
@@ -692,7 +511,6 @@ static fsw_status_t fsw_iso9660_read_dirrec(struct fsw_iso9660_volume *vol, stru
     if (buffer_size < remaining_size)
         return FSW_VOLUME_CORRUPTED;
 
-//     dump_dirrec(dirrec);
      if (vol->fRockRidge)
      {
          sp_off = sizeof (*dirrec) + dirrec->file_identifier_length;
@@ -707,33 +525,21 @@ static fsw_status_t fsw_iso9660_read_dirrec(struct fsw_iso9660_volume *vol, stru
             return FSW_SUCCESS;
     }
 
-    // setup name
     name_len = dirrec->file_identifier_length;
     for (i = name_len - 1; i > 0; i--) {
         if (dirrec->file_identifier[i] == ';') {
-            name_len = i;   // cut the ISO9660 version number off
+            name_len = i;
             break;
         }
     }
     if (name_len > 0 && dirrec->file_identifier[name_len-1] == '.')
-        name_len--;   // also cut the extension separator if the extension is empty
+        name_len--;
     dirrec_buffer->name.type = FSW_STRING_TYPE_ISO88591;
     dirrec_buffer->name.len = dirrec_buffer->name.size = name_len;
     dirrec_buffer->name.data = dirrec->file_identifier;
-//    DEBUG((DEBUG_INFO, "%a:%d: dirrec_buffer->name.data:%a\n", __FILE__, __LINE__, dirrec_buffer->name.data));
+
     return FSW_SUCCESS;
 }
-
-/**
- * Get the target path of a symbolic link. This function is called when a symbolic
- * link needs to be resolved. The core makes sure that the fsw_iso9660_dnode_fill has been
- * called on the dnode and that it really is a symlink.
- *
- * For iso9660, the target path can be stored inline in the inode structure (in the space
- * otherwise occupied by the block pointers) or in the inode's data. There is no flag
- * indicating this, only the number of blocks entry (i_blocks) can be used as an
- * indication. The check used here comes from the Linux kernel.
- */
 
 static fsw_status_t fsw_iso9660_readlink(struct fsw_iso9660_volume *vol, struct fsw_iso9660_dnode *dno,
                                          struct fsw_string *link_target)
@@ -747,5 +553,3 @@ static fsw_status_t fsw_iso9660_readlink(struct fsw_iso9660_volume *vol, struct 
 
     return status;
 }
-
-// EOF

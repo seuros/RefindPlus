@@ -1,43 +1,13 @@
-/**
- * \file fsw_ext4.c
- * ext4 file system driver code.
- */
-
-/*
- * Copyright (c) 2012 Stefan Agner
- * Portions Copyright (c) 2006 Christoph Pfisterer
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2020-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
-
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #include "fsw_ext4.h"
 
 #define MAX_EXT_ENTRIES 1024
 #define EXT4_EXT_UNINIT 0x8000U
 #define EXT4_EXT_LEN_MASK 0x7FFFU
-
-//
-// Dispatch Table
-//
 
 struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(ext4) = {
     { FSW_STRING_TYPE_ISO88591, 4, 4, "ext4" },
@@ -56,7 +26,9 @@ struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(ext4) = {
     fsw_ext4_readlink,
 };
 
-// Extent-tree Traversal
+struct fsw_fstype_table *fsw_active_fstype_table = &FSW_FSTYPE_TABLE_NAME(ext4);
+CONST CHAR16            *fsw_active_fstype_name  = L"ext4";
+
 static
 fsw_status_t fsw_ext4_get_by_extent (
     struct fsw_ext4_volume *vol,
@@ -71,7 +43,6 @@ fsw_status_t fsw_ext4_get_by_extent (
     struct ext4_extent_header  *ext4_header;
     struct ext4_extent_idx     *ext4_idx, *best_idx;
     struct ext4_extent         *ext4_ext;
-
 
     release_bno = 0;
     buf_offset  = 0;
@@ -89,8 +60,6 @@ fsw_status_t fsw_ext4_get_by_extent (
     bno = extent->log_start;
     file_bcnt = (fsw_u32)((dno->g.size + vol->g.log_blocksize - 1) / vol->g.log_blocksize);
 
-    // Initial buffer is the inode's i_block.
-    // This is *NOT* a block from the cache.
     buffer = (void *)dno->raw->i_block;
 
     while (1) {
@@ -109,7 +78,7 @@ fsw_status_t fsw_ext4_get_by_extent (
         buf_offset += sizeof (struct ext4_extent_header);
 
         if (ext4_header->eh_depth == 0) {
-            // LEAF NODE
+
             for (ext_cnt = 0; ext_cnt < ext4_header->eh_entries; ext_cnt++) {
                 ext4_ext = (struct ext4_extent *)((char *)buffer + buf_offset);
                 buf_offset += sizeof (struct ext4_extent);
@@ -137,7 +106,7 @@ fsw_status_t fsw_ext4_get_by_extent (
             goto signal_sparse;
         }
         else {
-            // INDEX NODE
+
             best_idx = NULL;
             for (ext_cnt = 0; ext_cnt < ext4_header->eh_entries; ext_cnt++) {
                 ext4_idx = (struct ext4_extent_idx *)((char *)buffer + buf_offset);
@@ -154,7 +123,6 @@ fsw_status_t fsw_ext4_get_by_extent (
                 goto signal_sparse;
             }
 
-            // Release current block if not the inode
             if (release_bno) {
                 fsw_block_release (vol, release_bno, buffer);
             }
@@ -176,7 +144,7 @@ fsw_status_t fsw_ext4_get_by_extent (
 
             buf_offset = 0;
         }
-    } // while {Infinite}
+    }
 
 signal_sparse:
     FSW_MSG_L01((
@@ -185,9 +153,6 @@ signal_sparse:
         )
     ));
 
-	// Set 'Invalid' Type with 'IO' Error
-	// Returns to 'fsw_shandle_read' loop
-	// This will then zero the buffer out
 	extent->type = FSW_EXTENT_TYPE_INVALID;
 	status = FSW_IO_ERROR;
 
@@ -215,15 +180,6 @@ exit:
 	return status;
 }
 
-/**
-** The ext2/ext3 file system does not use extents, but stores a list of block numbers
-** using the usual direct, indirect, double-indirect, triple-indirect scheme. To
-** optimize access, this function checks if the following file blocks are mapped
-** to consecutive disk blocks and returns a combined extent if possible.
-**
-** Indirect block addressing path: direct/single/double/triple pointer handling.
-** Uses endian swaps when reading pointers from blocks or inode i_block[].
-**/
 static
 fsw_status_t fsw_ext4_get_by_blkaddr (
     struct fsw_ext4_volume *vol,
@@ -235,7 +191,6 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
     int              path[5], i;
     fsw_u32         *buffer;
 
-
     sparse_status = FSW_SUCCESS;
     bno = extent->log_start;
 
@@ -243,7 +198,7 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
     file_bcnt = (fsw_u32)((dno->g.size + vol->g.log_blocksize - 1) / vol->g.log_blocksize);
 
     if (bno < EXT4_NDIR_BLOCKS) {
-        // Use direct inode block pointers
+
         path[0] = bno;
         path[1] = -1;
     }
@@ -251,7 +206,7 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
         bno -= EXT4_NDIR_BLOCKS;
 
         if (bno < vol->ind_bcnt) {
-            // Use single-indirect inode block pointers
+
             path[0] = EXT4_IND_BLOCK;
             path[1] = bno;
             path[2] = -1;
@@ -260,7 +215,7 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
             bno -= vol->ind_bcnt;
 
             if (bno < vol->dind_bcnt) {
-                // Use double-indirect inode block pointers
+
                 path[0] = EXT4_DIND_BLOCK;
                 path[1] = bno / vol->ind_bcnt;
                 path[2] = bno % vol->ind_bcnt;
@@ -269,7 +224,6 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
             else {
                 bno -= vol->dind_bcnt;
 
-                // Use triple-indirect inode block pointers
                 path[0] = EXT4_TIND_BLOCK;
                 path[1] = bno / vol->dind_bcnt;
                 path[2] = (bno / vol->ind_bcnt) % vol->ind_bcnt;
@@ -279,7 +233,6 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
         }
     }
 
-    // Follow indirection path
     buffer = dno->raw->i_block;
     buf_bcnt = EXT4_NDIR_BLOCKS;
     release_bno = 0;
@@ -321,11 +274,10 @@ fsw_status_t fsw_ext4_get_by_blkaddr (
     extent->phys_start = bno;
 
 check_sparse:
-    // Check for contiguous holes in the same block
-    // path[i] is index within the current 'buffer'
+
     while (
-        path[i]           + extent->log_count < buf_bcnt &&    // Indirect block has more block pointers
-        extent->log_start + extent->log_count < file_bcnt      // File has more blocks
+        path[i]           + extent->log_count < buf_bcnt &&
+        extent->log_start + extent->log_count < file_bcnt
     ) {
         if (sparse_status) {
             if (buffer[path[i] + extent->log_count] != 0) break;
@@ -352,9 +304,6 @@ check_sparse:
         )
     ));
 
-    // Set 'Invalid' Type with 'IO' Error
-    // Returns to 'fsw_shandle_read' loop
-    // This will then zero the buffer out
     extent->type = FSW_EXTENT_TYPE_INVALID;
     status = FSW_IO_ERROR;
 
@@ -386,7 +335,6 @@ exit:
     return status;
 }
 
-
 static __inline
 int test_root (
     fsw_u32 a,
@@ -413,7 +361,6 @@ int fsw_ext4_group_sparse (
     );
 }
 
-/* Calculate the first block number of the group */
 static __inline
 fsw_u64 fsw_ext4_group_first_block_no (
     struct ext4_super_block *sb,
@@ -451,12 +398,6 @@ void fsw_ext4_log_vol_mount (
     return;
 }
 
-
-/**
- * Mount an ext4 volume. Reads the superblock and constructs the
- * root directory dnode.
- */
-
 fsw_status_t fsw_ext4_volume_mount (
     struct fsw_ext4_volume *vol
 ) {
@@ -470,8 +411,6 @@ fsw_status_t fsw_ext4_volume_mount (
     struct ext4_group_desc *gdesc;
     struct fsw_string       s;
 
-
-    // Allocate memory to keep the superblock around
     status = FSW_DO_ALLOC(
         sizeof (
             struct ext4_super_block
@@ -488,7 +427,6 @@ fsw_status_t fsw_ext4_volume_mount (
         return status;
     }
 
-    // Read the superblock into its buffer
     fsw_set_blocksize (
         vol,
         EXT4_SUPERBLOCK_BLOCKSIZE,
@@ -519,7 +457,6 @@ fsw_status_t fsw_ext4_volume_mount (
         buffer
     );
 
-    // Check superblock
     if (vol->sb->s_magic != EXT4_SUPER_MAGIC) {
         return FSW_UNSUPPORTED;
     }
@@ -569,14 +506,11 @@ fsw_status_t fsw_ext4_volume_mount (
         return FSW_UNSUPPORTED;
     }
 
-    // Set real blocksize
     fsw_set_blocksize (vol, blocksize, blocksize);
 
-    // Get other info from superblock
     vol->ind_bcnt   = EXT4_ADDR_PER_BLOCK(vol->sb);
     vol->dind_bcnt  = vol->ind_bcnt * vol->ind_bcnt;
     vol->inode_size = vol->sb->s_inode_size;
-    //EXT4_INODE_SIZE(vol->sb);
 
     for (i = 0; i < 16; i++) {
         if (vol->sb->s_volume_name[i] == 0) break;
@@ -593,41 +527,33 @@ fsw_status_t fsw_ext4_volume_mount (
         return status;
     }
 
-    // Size of group descriptor depends on feature.
     if (!(vol->sb->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)) {
-        // Default minimal group descriptor size
-        // Might not be set in old ext2 filesystems, so set it
+
         vol->sb->s_desc_size = EXT4_MIN_DESC_SIZE;
     }
 
-    // Calculate group descriptor count as the kernel does
     groupcnt = (
         vol->sb->s_blocks_count_lo  -
         vol->sb->s_first_data_block +
         vol->sb->s_blocks_per_group - 1
     ) / vol->sb->s_blocks_per_group;
 
-    // Descriptors in one block... s_desc_size needs to be set!
-    // Usually 128 since normal block descriptors are 32 bytes and block size is 4096
     gdesc_per_block = EXT4_DESC_PER_BLOCK(vol->sb);
 
-    // Read the group descriptors to get inode table offsets
     status = FSW_DO_ALLOC(sizeof (fsw_u64) * groupcnt, &vol->inotab_bno);
     if (status) {
         return status;
     }
 
-    // Loop through all block group descriptors in order to get inode table locations
     for (groupno = 0; groupno < groupcnt; groupno++) {
-        // Calculate the block number containing the block group descriptor
+
         if (groupno >= vol->sb->s_first_meta_bg &&
             vol->sb->s_feature_incompat & EXT4_FEATURE_INCOMPAT_META_BG
         ) {
-            // If option meta_bg is set, the block group descriptor is in meta block group...
+
             metabg_of_gdesc = (fsw_u32)(groupno / gdesc_per_block) * gdesc_per_block;
             gdesc_bno = fsw_ext4_group_first_block_no(vol->sb, metabg_of_gdesc);
 
-            // If the block group has a super block, descriptors are in the next block number
             if (fsw_ext4_group_sparse (metabg_of_gdesc) ||
                 !(vol->sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER)
             ) {
@@ -635,14 +561,13 @@ fsw_status_t fsw_ext4_volume_mount (
             }
         }
         else {
-            // All group descriptors follow the super block (+1)
+
             gdesc_bno = (
                 vol->sb->s_first_data_block + 1
             ) + groupno / gdesc_per_block;
         }
         gdesc_index = groupno % gdesc_per_block;
 
-        // Get block if necessary...
         status = fsw_block_get (
             vol, gdesc_bno, 1,
             (void **) &buffer
@@ -656,7 +581,6 @@ fsw_status_t fsw_ext4_volume_mount (
             return status;
         }
 
-        // Get group descriptor table and block number of inode table...
         gdesc = (struct ext4_group_desc *)(
             (char *)buffer +
             gdesc_index * vol->sb->s_desc_size
@@ -669,7 +593,6 @@ fsw_status_t fsw_ext4_volume_mount (
         fsw_block_release (vol, gdesc_bno, buffer);
     }
 
-    // Setup the root dnode
     status = fsw_dnode_create_root (
         vol, EXT4_ROOT_INO,
         &vol->g.root
@@ -687,22 +610,12 @@ fsw_status_t fsw_ext4_volume_mount (
     return FSW_SUCCESS;
 }
 
-/**
- * Free the volume data structure. Called by the core after
- * an unmount (or unsuccessful mount) to release the memory
- * used in the volume structure for the filesystem type.
- */
-
 void fsw_ext4_volume_free (
     struct fsw_ext4_volume *vol
 ) {
     if (vol->sb)         FSW_DO_FREE(vol->sb);
     if (vol->inotab_bno) FSW_DO_FREE(vol->inotab_bno);
 }
-
-/**
- * Get in-depth information on a volume.
- */
 
 fsw_status_t fsw_ext4_volume_stat (
     struct fsw_ext4_volume *vol,
@@ -725,14 +638,6 @@ fsw_status_t fsw_ext4_volume_stat (
     return FSW_SUCCESS;
 }
 
-/**
- * Get full information on a dnode from disk. This function is called by the core
- * whenever it needs to access fields in the dnode structure that may not
- * be filled immediately upon creation of the dnode. In the case of ext4, we
- * delay fetching of the inode structure until dnode_fill is called. The size and
- * type fields are invalid until this function has been called.
- */
-
 fsw_status_t fsw_ext4_dnode_fill (
     struct fsw_ext4_volume *vol,
     struct fsw_ext4_dnode  *dno
@@ -746,7 +651,6 @@ fsw_status_t fsw_ext4_dnode_fill (
         return FSW_SUCCESS;
     }
 
-    // Read the inode block
     groupno = (fsw_u32) (dno->g.dnode_id - 1) / vol->sb->s_inodes_per_group;
     ino_in_group = (fsw_u32) (dno->g.dnode_id - 1) % vol->sb->s_inodes_per_group;
     ino_bno = vol->inotab_bno[groupno] +
@@ -761,7 +665,6 @@ fsw_status_t fsw_ext4_dnode_fill (
         return status;
     }
 
-    // Keep our inode around
     status = fsw_memdup(
         (void **) &dno->raw,
         buffer + ino_index * vol->inode_size,
@@ -772,8 +675,6 @@ fsw_status_t fsw_ext4_dnode_fill (
         return status;
     }
 
-    // Get info from the inode
-    // TODO: Check docs for 64-bit sized files
     dno->g.size = dno->raw->i_size_lo;
 
     if (0);
@@ -795,25 +696,12 @@ fsw_status_t fsw_ext4_dnode_fill (
     return FSW_SUCCESS;
 }
 
-/**
- * Free the dnode data structure. Called by the core when deallocating a dnode
- * structure to release the memory used by the file system type specific part
- * of the dnode structure.
- */
-
 void fsw_ext4_dnode_free (
     struct fsw_ext4_volume *vol,
     struct fsw_ext4_dnode  *dno
 ) {
     if (dno->raw) FSW_DO_FREE(dno->raw);
 }
-
-/**
- * Get in-depth information on a dnode. The core makes sure that fsw_ext4_dnode_fill
- * has been called on the dnode before this function is called. Note that some
- * data is not directly stored into the structure, but passed to a host-specific
- * callback that converts it to the host-specific format.
- */
 
 fsw_status_t fsw_ext4_dnode_stat (
     struct fsw_ext4_volume *vol,
@@ -822,7 +710,7 @@ fsw_status_t fsw_ext4_dnode_stat (
 ) {
     sb->used_bytes = EXT4_BLOCK_SIZE(
         vol->sb
-    ) * ((fsw_u64)dno->raw->i_blocks_lo);   // very, very strange...
+    ) * ((fsw_u64)dno->raw->i_blocks_lo);
     fsw_store_time_posix(sb, FSW_DNODE_STAT_CTIME, dno->raw->i_ctime);
     fsw_store_time_posix(sb, FSW_DNODE_STAT_ATIME, dno->raw->i_atime);
     fsw_store_time_posix(sb, FSW_DNODE_STAT_MTIME, dno->raw->i_mtime);
@@ -831,18 +719,6 @@ fsw_status_t fsw_ext4_dnode_stat (
     return FSW_SUCCESS;
 }
 
-/**
- * Retrieve file data mapping information. This function is called by the core when
- * fsw_shandle_read needs to know where on the disk the required piece of the file's
- * data can be found. The core makes sure that fsw_ext4_dnode_fill has been called
- * on the dnode before. Our task here is to get the physical disk block number for
- * the requested logical block number.
- *
- * The ext4 file system usually uses extents do to store those disk block numbers.
- * However, since ext4 is backward compatible, depending on inode flags the old direct
- * and indirect addressing scheme can still be in place...
- */
-
 fsw_status_t fsw_ext4_get_extent (
     struct fsw_ext4_volume *vol,
     struct fsw_ext4_dnode  *dno,
@@ -850,9 +726,6 @@ fsw_status_t fsw_ext4_get_extent (
 ) {
     fsw_status_t   status;
 
-
-    // Precondition: The dnode has complete information, i.e.
-    // fsw_ext4_dnode_read_info has been called successfully.
     FSW_MSG_L03((
 		FSW_MSG_STR(
 			"FSW_EXT4: fsw_ext4_get_extent ... inode %d, block %d\n"
@@ -911,13 +784,6 @@ fsw_status_t fsw_ext4_get_extent (
 	return status;
 }
 
-/**
- * Lookup a directory's child dnode by name. This function is called on a
- * directory to retrieve the directory entry with the given name. A dnode
- * is constructed for this entry and returned. The core makes sure that
- * fsw_ext4_dnode_fill has been called and the dnode is actually a directory.
- */
-
 fsw_status_t fsw_ext4_dir_lookup (
     struct fsw_ext4_volume  *vol,
     struct fsw_ext4_dnode   *dno,
@@ -930,30 +796,25 @@ fsw_status_t fsw_ext4_dir_lookup (
     struct ext4_dir_entry entry;
     struct fsw_string entry_name;
 
-    // Preconditions: The caller has checked that dno is a directory node.
-
     entry_name.type = FSW_STRING_TYPE_ISO88591;
 
-    // Setup handle to read the directory
     status = fsw_shandle_open (dno, &shand);
     if (status) {
         return status;
     }
 
-    // Scan the directory for the file
     child_ino = 0;
     while (child_ino == 0) {
-        // Read next entry
+
         status = fsw_ext4_read_dentry (&shand, &entry);
         if (status) goto errorexit;
 
         if (entry.inode == 0) {
-            // End of directory reached
+
             status = FSW_NOT_FOUND;
             goto errorexit;
         }
 
-        // Compare name
         entry_name.len = entry_name.size = entry.name_len;
         entry_name.data = entry.name;
         if (fsw_streq(lookup_name, &entry_name)) {
@@ -962,7 +823,6 @@ fsw_status_t fsw_ext4_dir_lookup (
         }
     }
 
-    // Setup a dnode for the child item
     status = fsw_dnode_create (
         dno, child_ino,
         FSW_DNODE_TYPE_UNKNOWN,
@@ -974,15 +834,6 @@ errorexit:
     return status;
 }
 
-/**
- * Get the next directory entry when reading a directory. This function is
- * called during directory iteration to retrieve the next directory entry.
- * A dnode is constructed for the entry and returned. The core makes sure
- * that fsw_ext4_dnode_fill has been called and the dnode is actually
- * a directory. The shandle provided by the caller is used to record
- * the position in the directory between calls.
- */
-
 fsw_status_t fsw_ext4_dir_read (
     struct fsw_ext4_volume  *vol,
     struct fsw_ext4_dnode   *dno,
@@ -993,9 +844,6 @@ fsw_status_t fsw_ext4_dir_read (
     struct ext4_dir_entry entry;
     struct fsw_string entry_name;
 
-    // Preconditions: The caller has checked that dno is a directory node.
-    // The caller has opened a storage handle to the directory's storage
-    // and keeps it around between calls.
     FSW_MSG_L03((
         FSW_MSG_STR(
             "FSW_EXT4: fsw_ext4_dir_read ... Started Reading Dir\n"
@@ -1006,32 +854,29 @@ fsw_status_t fsw_ext4_dir_read (
     entry.inode    = 0;
 
     while (1) {
-        // Read next entry
+
         status = fsw_ext4_read_dentry(shand, &entry);
         if (status) {
             return status;
         }
 
         if (entry.inode == 0) {
-            // End of directory
+
             return FSW_NOT_FOUND;
         }
 
-        // Skip '.' and '..'
         if ((entry.name_len == 1 && entry.name[0] == '.') ||
             (entry.name_len == 2 && entry.name[0] == '.'  && entry.name[1] == '.')
         ) {
             continue;
         }
         break;
-    } // while {Infinite}
+    }
 
-    // Setup name
     entry_name.data = entry.name;
     entry_name.type = FSW_STRING_TYPE_ISO88591;
     entry_name.len  = entry_name.size = entry.name_len;
 
-    // Setup a dnode for the child item
     status = fsw_dnode_create (
         dno, entry.inode,
         FSW_DNODE_TYPE_UNKNOWN,
@@ -1041,12 +886,6 @@ fsw_status_t fsw_ext4_dir_read (
     return status;
 }
 
-/**
- * Read a directory entry from the directory's raw data.
- * This internal function reads a raw ext2 directory entry into memory.
- * The shandle's position pointer is adjusted to point to the next entry.
- */
-
 fsw_status_t fsw_ext4_read_dentry (
     struct fsw_shandle    *shand,
     struct ext4_dir_entry *entry
@@ -1055,14 +894,14 @@ fsw_status_t fsw_ext4_read_dentry (
     fsw_u32         buffer_size;
 
     while (1) {
-        // Read dir_entry header (fixed length)
+
         buffer_size = 8;
         status = fsw_shandle_read(shand, &buffer_size, entry);
         if (status)
             return status;
 
         if (buffer_size < 8 || entry->rec_len == 0) {
-            // End of directory reached
+
             entry->inode = 0;
             return FSW_SUCCESS;
         }
@@ -1078,7 +917,7 @@ fsw_status_t fsw_ext4_read_dentry (
         }
 
         if (entry->inode != 0) {
-            // This entry is used
+
             if (entry->rec_len < entry->name_len + 8) {
                 FSW_MSG_L01((
                     FSW_MSG_STR(
@@ -1092,11 +931,9 @@ fsw_status_t fsw_ext4_read_dentry (
             break;
         }
 
-        // Valid but unused entry ... Skip
         shand->pos += entry->rec_len - 8;
-    } // while {Infinite}
+    }
 
-    // Read file name (variable length)
     buffer_size = entry->name_len;
     status = fsw_shandle_read (
         shand, &buffer_size, entry->name
@@ -1121,22 +958,10 @@ fsw_status_t fsw_ext4_read_dentry (
         return FSW_VOLUME_CORRUPTED;
     }
 
-    // Skip any remaining padding
     shand->pos += entry->rec_len - (8 + entry->name_len);
 
     return FSW_SUCCESS;
 }
-
-/**
- * Get the target path of a symbolic link. This function is called when
- * a symbolic link needs to be resolved. The core makes sure that dnode
- * has had fsw_ext4_dnode_fill called and that it really is a symlink.
- *
- * For ext4, the target path can be stored inline in the inode structure
- * (in the space otherwise occupied by the block pointers) or in the inode's
- * data. There is no flag indicating this, only the number of blocks entry
- * (i_blocks) serves as an indication. This check is from the Linux kernel.
- */
 
 fsw_status_t fsw_ext4_readlink (
     struct fsw_ext4_volume *vol,
@@ -1157,13 +982,12 @@ fsw_status_t fsw_ext4_readlink (
         return FSW_VOLUME_CORRUPTED;
     }
 
-    /* 'ext4_inode_is_fast_symlink' from Linux kernels */
     ea_blocks = (
         dno->raw->i_file_acl_lo
     ) ? (vol->g.log_blocksize >> 9) : 0;
 
     if (dno->raw->i_blocks_lo - ea_blocks != 0) {
-        // Path stored in normal inode data ("Slow" symlink)
+
         status = fsw_dnode_readlink_data(dno, link_target);
     }
     else {
@@ -1177,7 +1001,6 @@ fsw_status_t fsw_ext4_readlink (
             return FSW_VOLUME_CORRUPTED;
         }
 
-        // Path stored inside the inode ("Fast" symlink)
         s.type = FSW_STRING_TYPE_ISO88591;
         s.size = s.len = (int)dno->g.size;
         s.data = dno->raw->i_block;

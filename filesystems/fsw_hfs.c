@@ -1,40 +1,11 @@
-/* $Id: fsw_hfs.c 33540 2010-10-28 09:27:05Z vboxsync $ */
-/** @file
- * fsw_hfs.c - HFS file system driver code, see
- *
- *   http://developer.apple.com/technotes/tn/tn1150.html
- *
- * Current limitations:
- *  - Does not support permissions
- *  - Complete Unicode case-insensitiveness disabled (large tables)
- *  - No links
- *  - Only supports pure HFS+ (i.e. no HFS, or HFS+ embedded to HFS)
- */
-
-/*
- * Copyright (C) 2010 Oracle Corporation
- *
- * This file is part of VirtualBox Open Source Edition (OSE), as
- * available from http://www.virtualbox.org. This file is free software;
- * you can redistribute it and/or modify it under the terms of the GNU
- * General Public License (GPL) as published by the Free Software
- * Foundation, in version 2 as it comes in the "COPYING" file of the
- * VirtualBox OSE distribution. VirtualBox OSE is distributed in the
- * hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2021-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2021-2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #include "fsw_hfs.h"
 
 #define CONCAT(x, y) x##y
-
-
-// functions
 
 static fsw_status_t fsw_hfs_volume_mount (
     struct fsw_hfs_volume *vol
@@ -92,44 +63,43 @@ static fsw_status_t fsw_hfs_readlink (
     struct fsw_string     *link
 );
 
-//
-// Dispatch Table
-//
-
 struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(hfs) = {
     { FSW_STRING_TYPE_ISO88591, 4, 4, "hfs" },
     sizeof (struct fsw_hfs_volume),
     sizeof (struct fsw_hfs_dnode),
 
-    fsw_hfs_volume_mount, // Volume open
-    fsw_hfs_volume_free,  // Volume close
-    fsw_hfs_volume_stat,  // Volume info: total_bytes, free_bytes
-    fsw_hfs_dnode_fill,   // Return FSW_SUCCESS;
-    fsw_hfs_dnode_free,	  // Empty
-    fsw_hfs_dnode_stat,	  // Size and times
-    fsw_hfs_get_extent,	  // Get the physical disk block number for the requested logical block number
-    fsw_hfs_dir_lookup,   // Retrieve the directory entry with the given name
-    fsw_hfs_dir_read,	  // Next directory entry when reading a directory
-    fsw_hfs_readlink,     // Return FSW_UNSUPPORTED;
+    fsw_hfs_volume_mount,
+    fsw_hfs_volume_free,
+    fsw_hfs_volume_stat,
+    fsw_hfs_dnode_fill,
+    fsw_hfs_dnode_free,
+    fsw_hfs_dnode_stat,
+    fsw_hfs_get_extent,
+    fsw_hfs_dir_lookup,
+    fsw_hfs_dir_read,
+    fsw_hfs_readlink,
 };
 
+struct fsw_fstype_table *fsw_active_fstype_table = &FSW_FSTYPE_TABLE_NAME(hfs);
+CONST CHAR16            *fsw_active_fstype_name  = L"hfs";
+
 static const fsw_u16 fsw_latin_case_fold[] = {
-    /* 0 */ 0xFFFF, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
-    /* 1 */ 0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0017, 0x0018, 0x0019, 0x001A, 0x001B, 0x001C, 0x001D, 0x001E, 0x001F,
-    /* 2 */ 0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
-    /* 3 */ 0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003A, 0x003B, 0x003C, 0x003D, 0x003E, 0x003F,
-    /* 4 */ 0x0040, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
-    /* 5 */ 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x005B, 0x005C, 0x005D, 0x005E, 0x005F,
-    /* 6 */ 0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
-    /* 7 */ 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x007B, 0x007C, 0x007D, 0x007E, 0x007F,
-    /* 8 */ 0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 0x0089, 0x008A, 0x008B, 0x008C, 0x008D, 0x008E, 0x008F,
-    /* 9 */ 0x0090, 0x0091, 0x0092, 0x0093, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009A, 0x009B, 0x009C, 0x009D, 0x009E, 0x009F,
-    /* A */ 0x00A0, 0x00A1, 0x00A2, 0x00A3, 0x00A4, 0x00A5, 0x00A6, 0x00A7, 0x00A8, 0x00A9, 0x00AA, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x00AF,
-    /* B */ 0x00B0, 0x00B1, 0x00B2, 0x00B3, 0x00B4, 0x00B5, 0x00B6, 0x00B7, 0x00B8, 0x00B9, 0x00BA, 0x00BB, 0x00BC, 0x00BD, 0x00BE, 0x00BF,
-    /* C */ 0x00C0, 0x00C1, 0x00C2, 0x00C3, 0x00C4, 0x00C5, 0x00E6, 0x00C7, 0x00C8, 0x00C9, 0x00CA, 0x00CB, 0x00CC, 0x00CD, 0x00CE, 0x00CF,
-    /* D */ 0x00F0, 0x00D1, 0x00D2, 0x00D3, 0x00D4, 0x00D5, 0x00D6, 0x00D7, 0x00F8, 0x00D9, 0x00DA, 0x00DB, 0x00DC, 0x00DD, 0x00FE, 0x00DF,
-    /* E */ 0x00E0, 0x00E1, 0x00E2, 0x00E3, 0x00E4, 0x00E5, 0x00E6, 0x00E7, 0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x00EC, 0x00ED, 0x00EE, 0x00EF,
-    /* F */ 0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF,
+     0xFFFF, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+     0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0017, 0x0018, 0x0019, 0x001A, 0x001B, 0x001C, 0x001D, 0x001E, 0x001F,
+     0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
+     0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003A, 0x003B, 0x003C, 0x003D, 0x003E, 0x003F,
+     0x0040, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
+     0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x005B, 0x005C, 0x005D, 0x005E, 0x005F,
+     0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
+     0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x007B, 0x007C, 0x007D, 0x007E, 0x007F,
+     0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 0x0089, 0x008A, 0x008B, 0x008C, 0x008D, 0x008E, 0x008F,
+     0x0090, 0x0091, 0x0092, 0x0093, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009A, 0x009B, 0x009C, 0x009D, 0x009E, 0x009F,
+     0x00A0, 0x00A1, 0x00A2, 0x00A3, 0x00A4, 0x00A5, 0x00A6, 0x00A7, 0x00A8, 0x00A9, 0x00AA, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x00AF,
+     0x00B0, 0x00B1, 0x00B2, 0x00B3, 0x00B4, 0x00B5, 0x00B6, 0x00B7, 0x00B8, 0x00B9, 0x00BA, 0x00BB, 0x00BC, 0x00BD, 0x00BE, 0x00BF,
+     0x00C0, 0x00C1, 0x00C2, 0x00C3, 0x00C4, 0x00C5, 0x00E6, 0x00C7, 0x00C8, 0x00C9, 0x00CA, 0x00CB, 0x00CC, 0x00CD, 0x00CE, 0x00CF,
+     0x00F0, 0x00D1, 0x00D2, 0x00D3, 0x00D4, 0x00D5, 0x00D6, 0x00D7, 0x00F8, 0x00D9, 0x00DA, 0x00DB, 0x00DC, 0x00DD, 0x00FE, 0x00DF,
+     0x00E0, 0x00E1, 0x00E2, 0x00E3, 0x00E4, 0x00E5, 0x00E6, 0x00E7, 0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x00EC, 0x00ED, 0x00EE, 0x00EF,
+     0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF,
 };
 
 static
@@ -160,7 +130,7 @@ fsw_s32 fsw_hfs_read_block (
         return status;
 
     phys_bno = extent.phys_start;
-  //Slice - increase cache level from 0 to 3
+
     status = fsw_block_get (dno->g.vol, phys_bno, 3, (void **) &buffer);
     if (status)
         return status;
@@ -172,7 +142,6 @@ fsw_s32 fsw_hfs_read_block (
     return FSW_SUCCESS;
 }
 
-/* Read data from HFS file. */
 static
 fsw_s32 fsw_hfs_read_file (
     struct fsw_hfs_dnode    * dno,
@@ -211,7 +180,6 @@ fsw_s32 fsw_hfs_read_file (
     return read;
 }
 
-
 static
 fsw_s32 fsw_hfs_compute_shift(
     fsw_u32 size
@@ -226,45 +194,6 @@ fsw_s32 fsw_hfs_compute_shift(
 
     return 0;
 }
-
-/**
- * Mount an HFS+ volume. Reads the superblock and constructs the
- * root directory dnode.
- */
-//algo from Chameleon
-/*
-void
-HFSGetDescription(CICell ih, char *str, long strMaxLen)
-{
-
-  UInt16 nodeSize;
-  UInt32 firstLeafNode;
-  long long dirIndex;
-  char *name;
-  long flags, time;
-
-  if (HFSInitPartition(ih) == -1) {
-      return;
-  }
-
-
-  // Fill some crucial data structures by side effect.
-  dirIndex = 0;
-  HFSGetDirEntry(ih, "/", &dirIndex, &name, &flags, &time, 0, 0);
-
-  // Now we can loook up the volume name node.
-  nodeSize = be16_to_cpu(gBTHeaders[kBTreeCatalog]->nodeSize);
-  firstLeafNode = SWAP_BE32(gBTHeaders[kBTreeCatalog]->firstLeafNode);
-
-  dirIndex = (long long) firstLeafNode * nodeSize;
-
-  GetCatalogEntry(&dirIndex, &name, &flags, &time, 0, 0);
-
-  strncpy(str, name, strMaxLen);
-  str[strMaxLen] = '\0';
-}
-*/
-
 
 static
 fsw_status_t fsw_hfs_volume_mount (
@@ -306,18 +235,18 @@ fsw_status_t fsw_hfs_volume_mount (
         mdb       = (HFSMasterDirectoryBlock*)buffer;
         signature = be16_to_cpu(voldesc->signature);
 
-        if ((signature == kHFSPlusSigWord) || (signature == kHFSXSigWord)) { //H+ or HX
+        if ((signature == kHFSPlusSigWord) || (signature == kHFSXSigWord)) {
             if (vol->hfs_kind == 0) {
                 vol->hfs_kind = FSW_HFS_PLUS;
             }
         }
-        else if (signature == kHFSSigWord) { // 'BD'
+        else if (signature == kHFSSigWord) {
             if (be16_to_cpu(mdb->drEmbedSigWord) == kHFSPlusSigWord) {
-                // found HFS+ inside HFS, untested
+
                 vol->hfs_kind = FSW_HFS_PLUS_EMB;
                 vol->emb_block_off = be32_to_cpu(mdb->drEmbedExtent.startBlock);
                 blockno += vol->emb_block_off;
-                /* retry */
+
                 continue;
             }
             else {
@@ -337,7 +266,6 @@ fsw_status_t fsw_hfs_volume_mount (
         );
         CHECK(status);
 
-
         block_size = be32_to_cpu(voldesc->blockSize);
         vol->block_size_shift = fsw_hfs_compute_shift(block_size);
 
@@ -345,7 +273,6 @@ fsw_status_t fsw_hfs_volume_mount (
         buffer = NULL;
         fsw_set_blocksize (vol, block_size, block_size);
 
-        /* set default/fallback volume name */
         s.type = FSW_STRING_TYPE_ISO88591;
         #define kHFSVolumeNameFallback "HFS+ volume"
         s.size = s.len = (sizeof(kHFSVolumeNameFallback) - 1);
@@ -355,7 +282,6 @@ fsw_status_t fsw_hfs_volume_mount (
         );
         CHECK(status);
 
-        /* Setup catalog dnode */
         status = fsw_dnode_create_root(
             vol, kHFSCatalogFileID, &vol->catalog_tree.file
         );
@@ -367,7 +293,6 @@ fsw_status_t fsw_hfs_volume_mount (
             vol->primary_voldesc->catalogFile.logicalSize
         );
 
-        /* Setup extents overflow file */
         fsw_dnode_create_root(vol, kHFSExtentsFileID, &vol->extents_tree.file);
         FSW_DO_MEMCPY(vol->extents_tree.file->extents,
                     vol->primary_voldesc->extentsFile.extents,
@@ -376,14 +301,9 @@ fsw_status_t fsw_hfs_volume_mount (
             vol->primary_voldesc->extentsFile.logicalSize
         );
 
-        /* Setup the root dnode */
         status = fsw_dnode_create_root(vol, kHFSRootFolderID, &vol->g.root);
         CHECK(status);
 
-        /*
-         * Read catalog file, we know that first record is in the first node, right after
-         * the node descriptor.
-         */
         r = fsw_hfs_read_file(vol->catalog_tree.file,
                               sizeof (BTNodeDescriptor),
                               sizeof (BTHeaderRec), (fsw_u8 *) &tree_header);
@@ -398,8 +318,6 @@ fsw_status_t fsw_hfs_volume_mount (
         vol->catalog_tree.root_node = be32_to_cpu (tree_header.rootNode);
         vol->catalog_tree.node_size = be16_to_cpu (tree_header.nodeSize);
 
-        //nms42
-        /* Take Volume Name before tree_header overwritten */
         firstLeafNum = be32_to_cpu(tree_header.firstLeafNode);
         catfOffset = ((fsw_u64)firstLeafNum) * vol->catalog_tree.node_size;
 
@@ -430,10 +348,9 @@ fsw_status_t fsw_hfs_volume_mount (
                   vol->g.host_string_type, &vn
               );
               CHECK(status);
-           } // if
-        } // if
+           }
+        }
 
-        /* Read extents overflow file */
         r = fsw_hfs_read_file(
             vol->extents_tree.file,
             sizeof (BTNodeDescriptor),
@@ -453,60 +370,10 @@ fsw_status_t fsw_hfs_volume_mount (
 
 #undef CHECK
 
-
     if (buffer != NULL) fsw_block_release (vol, blockno, buffer);
 
     return rv;
 }
-
-//Here is a method to obtain Volume label from Apple
-//how to implement it?
-/*
-UInt16 nodeSize;
-UInt32 firstLeafNode;
-long long dirIndex;
-char *name;
-long flags, time;
- char              *nodeBuf, *testKey, *entry;
-
-
-if (HFSInitPartition(ih) == -1) {
-    return;
-}
-
-// Fill some crucial data structures by side effect.
-dirIndex = 0;
-HFSGetDirEntry(ih, "/", &dirIndex, &name, &flags, &time, 0, 0);
-
-// Now we can loook up the volume name node.
-nodeSize = SWAP_BE16(gBTHeaders[kBTreeCatalog]->nodeSize);
-firstLeafNode = SWAP_BE32(gBTHeaders[kBTreeCatalog]->firstLeafNode);
-
-dirIndex = (long long) firstLeafNode * nodeSize;
- index   = (long) (*dirIndex % nodeSize); == 0
- curNode = (long) (*dirIndex / nodeSize); == firstLeafNode
-
-//GetCatalogEntry(&dirIndex, &name, &flags, &time, 0, 0);
- // Read the BTree node and get the record for index.
- ReadExtent(extent, extentSize, kHFSCatalogFileID,
- (long long) curNode * nodeSize, nodeSize, nodeBuf, 1);
- GetBTreeRecord(index, nodeBuf, nodeSize, &testKey, &entry);
-
- utf_encodestr(((HFSPlusCatalogKey *)testKey)->nodeName.unicode,
- SWAP_BE16(((HFSPlusCatalogKey *)testKey)->nodeName.length),
- (u_int8_t *)gTempStr, 256, OSBigEndian);
-
- *name = gTempStr;
-
-strncpy(str, name, strMaxLen);
-str[strMaxLen] = '\0';
-*/
-
-/**
- * Free the volume data structure. Called by the core after an unmount or after
- * an unsuccessful mount to release the memory used by the file system type specific
- * part of the volume structure.
- */
 
 static
 void fsw_hfs_volume_free (
@@ -517,10 +384,6 @@ void fsw_hfs_volume_free (
         vol->primary_voldesc = NULL;
     }
 }
-
-/**
- * Get in-depth information on a volume.
- */
 
 static
 fsw_status_t fsw_hfs_volume_stat (
@@ -533,12 +396,6 @@ fsw_status_t fsw_hfs_volume_stat (
     return FSW_SUCCESS;
 }
 
-/**
- * Get full information on a dnode from disk. This function is called by the core
- * whenever it needs to access fields in the dnode structure that may not
- * be filled immediately upon creation of the dnode.
- */
-
 static
 fsw_status_t fsw_hfs_dnode_fill (
     struct fsw_hfs_volume *vol,
@@ -546,12 +403,6 @@ fsw_status_t fsw_hfs_dnode_fill (
 ) {
     return FSW_SUCCESS;
 }
-
-/**
- * Free the dnode data structure. Called by the core when deallocating a dnode
- * structure to release the memory used by the file system type specific part
- * of the dnode structure.
- */
 
 static
 void fsw_hfs_dnode_free (
@@ -564,16 +415,9 @@ void fsw_hfs_dnode_free (
 static fsw_u32 mac_to_posix (
     fsw_u32 mac_time
 ) {
-  /* Mac time is 1904 year based */
+
   return mac_time ?  mac_time - 2082844800 : 0;
 }
-
-/**
- * Get in-depth information on a dnode. The core makes sure that fsw_hfs_dnode_fill
- * has been called on the dnode before this function is called. Note that some
- * data is not directly stored into the structure, but passed to a host-specific
- * callback that converts it to the host-specific format.
- */
 
 static
 fsw_status_t fsw_hfs_dnode_stat (
@@ -616,7 +460,6 @@ int fsw_hfs_find_block (
     return 0;
 }
 
-/* Find record offset, numbering starts from the end */
 static
 fsw_u32 fsw_hfs_btree_recoffset (
     struct fsw_hfs_btree * btree,
@@ -629,7 +472,6 @@ fsw_u32 fsw_hfs_btree_recoffset (
   return be16_to_cpu(*recptr);
 }
 
-/* Pointer to the key inside node */
 static
 BTreeKey * fsw_hfs_btree_rec (
     struct fsw_hfs_btree   * btree,
@@ -641,7 +483,6 @@ BTreeKey * fsw_hfs_btree_rec (
   offset = fsw_hfs_btree_recoffset (btree, node, index);
   return (BTreeKey *) (cnode + offset);
 }
-
 
 static
 fsw_status_t fsw_hfs_btree_search (
@@ -670,7 +511,7 @@ fsw_status_t fsw_hfs_btree_search (
 
     readnode:
         match = 0;
-        /* Read a node.  */
+
         if (fsw_hfs_read_file (
                 btree->file,
                 (fsw_u64)currnode * btree->node_size,
@@ -700,12 +541,10 @@ fsw_status_t fsw_hfs_btree_search (
 
              currkey = fsw_hfs_btree_rec (btree, node, rec);
              cmp = compare_keys (currkey, key);
-             //fprintf(stderr, "rec=%d cmp=%d kind=%d \n", rec, cmp, node->kind);
 
-             /* Leaf node. */
              if (node->kind == kBTLeafNode) {
                if (cmp == 0) {
-                 /* Found!  */
+
                  *result = node;
                  *key_offset = rec;
 
@@ -735,7 +574,7 @@ fsw_status_t fsw_hfs_btree_search (
             break;
         }
 #else
-         /* Perform binary search */
+
          fsw_u32 lower = 0;
          fsw_u32 upper = count - 1;
          fsw_s32 cmp = -1;
@@ -755,7 +594,7 @@ fsw_status_t fsw_hfs_btree_search (
              if (cmp <  0)  upper = index - 1;
              if (cmp >  0)  lower = index + 1;
              if (cmp == 0) {
-                 /* Found!  */
+
                  *result = node;
                  *key_offset = rec;
 
@@ -783,7 +622,6 @@ fsw_status_t fsw_hfs_btree_search (
 #endif
     }
 
-
   done:
     if (buffer != NULL && status != FSW_SUCCESS)
         FSW_DO_FREE(buffer);
@@ -803,11 +641,11 @@ typedef struct {
 } file_info_t;
 
 typedef struct {
-    fsw_u32                cur_pos; /* current position */
+    fsw_u32                cur_pos;
     fsw_u32                parent;
     struct fsw_hfs_volume *vol;
 
-    struct fsw_shandle    *shandle; /* this one track iterator's state */
+    struct fsw_shandle    *shandle;
     file_info_t            file_info;
 } visitor_parameter_t;
 
@@ -829,7 +667,6 @@ int fsw_hfs_btree_visit_node (
         return -1;
     }
 
-    /* Ignore */
     if (vp->shandle->pos != vp->cur_pos++) {
         return 0;
     }
@@ -902,7 +739,7 @@ fsw_status_t fsw_hfs_btree_iterate_node (
     void                  * param
 ) {
   fsw_status_t status;
-  /* We modify node, so make a copy */
+
   BTNodeDescriptor * node   = first_node;
   fsw_u8           * buffer = NULL;
 
@@ -916,7 +753,7 @@ fsw_status_t fsw_hfs_btree_iterate_node (
       fsw_u32 next_node;
 
       /* coverity[tainted_data: SUPPRESS] */
-      for (i = first_rec; i < count; i++) { // Iterate over all records in this node
+      for (i = first_rec; i < count; i++) {
           int rv = callback(fsw_hfs_btree_rec (btree, node, i), param);
 
           switch (rv) {
@@ -927,7 +764,7 @@ fsw_status_t fsw_hfs_btree_iterate_node (
                   status = FSW_NOT_FOUND;
                   goto done;
           }
-          /* if callback returned 0 - continue */
+
       }
 
       next_node = be32_to_cpu(node->fLink);
@@ -971,7 +808,6 @@ fsw_hfs_cmp_extkey(BTreeKey* key1, BTreeKey* key2) {
     HFSPlusExtentKey* ekey2 = (HFSPlusExtentKey*)key2;
     int result;
 
-    /* First key is read from the FS data, second is in-memory in CPU endianess */
     result = be32_to_cpu(ekey1->fileID) - ekey2->fileID;
     if (result) return result;
 
@@ -1009,13 +845,12 @@ int fsw_hfs_cmp_catkey (
 
   while (1) {
     /* coverity[tainted_data: SUPPRESS] */
-    for (lc = 0; lc == 0 && apos < key1Len; apos++) { // get next valid character from ckey1
+    for (lc = 0; lc == 0 && apos < key1Len; apos++) {
       ac = be16_to_cpu(p1[apos]);
       lc = ac;
     };
     ac = (fsw_u16)lc;
 
-    /* get next valid character from ckey2 */
     for (lc = 0; lc == 0 && bpos < ckey2->nodeName.length; bpos++) {
       bc = p2[bpos];
       lc = bc;
@@ -1057,13 +892,12 @@ int fsw_hfs_cmpi_catkey (
 
   while (1) {
     /* coverity[tainted_data: SUPPRESS] */
-    for (lc = 0; lc == 0 && apos < key1Len; apos++) { // get next valid character from ckey1
+    for (lc = 0; lc == 0 && apos < key1Len; apos++) {
       ac = be16_to_cpu(p1[apos]);
       lc = ac ? fsw_to_lower(ac) : 0;
     };
     ac = (fsw_u16)lc;
 
-    /* get next valid character from ckey2 */
     for (lc = 0; lc == 0 && bpos < ckey2->nodeName.length; bpos++) {
       bc = p2[bpos];
       lc = bc ? fsw_to_lower(bc) : 0;
@@ -1074,14 +908,6 @@ int fsw_hfs_cmpi_catkey (
       return ac - bc;
   }
 }
-
-/**
- * Retrieve file data mapping information. This function is called by the core when
- * fsw_shandle_read needs to know where on the disk the required piece of the file's
- * data can be found. The core makes sure that fsw_hfs_dnode_fill has been called
- * on the dnode before. Our task here is to get the physical disk block number for
- * the requested logical block number.
- */
 
 static
 fsw_status_t fsw_hfs_get_extent(
@@ -1098,7 +924,6 @@ fsw_status_t fsw_hfs_get_extent(
     extent->log_count = 1;
     lbno = extent->log_start;
 
-    /* we only care about data forks atm, do we? */
     exts = &dno->extents;
 
     while (1) {
@@ -1113,8 +938,6 @@ fsw_status_t fsw_hfs_get_extent(
             break;
         }
 
-
-        /* Find appropriate overflow record */
         overflowkey.fileID = dno->g.dnode_id;
         overflowkey.startBlock = extent->log_start - lbno;
 
@@ -1143,12 +966,9 @@ fsw_status_t fsw_hfs_get_extent(
 }
 
 static const fsw_u16* g_blacklist[] = {
-    //L"AppleIntelCPUPowerManagement.kext",
+
     NULL
 };
-
-
-//#define HFS_FILE_INJECTION
 
 #ifdef HFS_FILE_INJECTION
 static struct {
@@ -1188,8 +1008,6 @@ fsw_status_t create_hfs_dnode(
     baby->ctime      = file_info->ctime;
     baby->mtime      = file_info->mtime;
 
-
-    /* Fill-in extents info */
     if (file_info->type == FSW_DNODE_TYPE_FILE) {
         FSW_DO_MEMCPY(
             baby->extents,
@@ -1202,14 +1020,6 @@ fsw_status_t create_hfs_dnode(
 
     return FSW_SUCCESS;
 }
-
-
-/**
- * Lookup a directory's child dnode by name. This function is called on a directory
- * to retrieve the directory entry with the given name. A dnode is constructed for
- * this entry and returned. The core makes sure that fsw_hfs_dnode_fill has been called
- * and the dnode is actually a directory.
- */
 
 static fsw_status_t fsw_hfs_dir_lookup (
     struct fsw_hfs_volume *vol,
@@ -1228,14 +1038,12 @@ static fsw_status_t fsw_hfs_dir_lookup (
     file_info_t                file_info;
     fsw_u8                    *base;
 
-
     FSW_DO_MEMZERO(&file_info, sizeof file_info);
     file_info.name = &rec_name;
 
     catkey.parentID = dno->g.dnode_id;
     catkey.nodeName.length = (fsw_u16)lookup_name->len;
 
-    /* no need to allocate anything */
     if (lookup_name->type == FSW_STRING_TYPE_UTF16) {
         FSW_DO_MEMCPY(
             catkey.nodeName.unicode,
@@ -1250,7 +1058,7 @@ static fsw_status_t fsw_hfs_dir_lookup (
             FSW_STRING_TYPE_UTF16,
             lookup_name
         );
-        /* nothing allocated so far */
+
         if (status) goto done;
 
         free_data = 1;
@@ -1261,7 +1069,6 @@ static fsw_status_t fsw_hfs_dir_lookup (
         );
     }
 
-    /* Dirty hack: blacklisting of certain files on FS driver level */
     for (i = 0; g_blacklist[i]; i++) {
         if (FSW_DO_MEMEQ(
                 g_blacklist[i],
@@ -1298,18 +1105,17 @@ static fsw_status_t fsw_hfs_dir_lookup (
     if (status) goto done;
 
     file_key = (HFSPlusCatalogKey *)fsw_hfs_btree_rec (&vol->catalog_tree, node, ptr);
-    /* for plain HFS "-(keySize & 1)" would be needed */
+
     base = (fsw_u8*)file_key + be16_to_cpu(file_key->keyLength) + 2;
     rec_type =  be16_to_cpu(*(fsw_u16*)base);
 
-    /** @todo: read additional info */
     switch (rec_type) {
         case kHFSPlusFolderRecord: {
             HFSPlusCatalogFolder* info = (HFSPlusCatalogFolder*)base;
 
             file_info.id = be32_to_cpu(info->folderID);
             file_info.type = FSW_DNODE_TYPE_DIR;
-            /* @todo: return number of elements, maybe use smth else */
+
             file_info.size = be32_to_cpu(info->valence);
             file_info.used = be32_to_cpu(info->valence);
             file_info.ctime = be32_to_cpu(info->createDate);
@@ -1356,14 +1162,6 @@ done:
     return status;
 }
 
-/**
- * Get the next directory entry when reading a directory. This function is called during
- * directory iteration to retrieve the next directory entry. A dnode is constructed for
- * the entry and returned. The core makes sure that fsw_hfs_dnode_fill has been called
- * and the dnode is actually a directory. The shandle provided by the caller is used to
- * record the position in the directory between calls.
- */
-
 static
 fsw_status_t fsw_hfs_dir_read (
     struct fsw_hfs_volume  *vol,
@@ -1395,7 +1193,6 @@ fsw_status_t fsw_hfs_dir_read (
     );
     if (status) goto done;
 
-    /* Iterator updates shand state */
     param.vol     = vol;
     param.shandle = shand;
     param.parent  = dno->g.dnode_id;
@@ -1420,12 +1217,6 @@ fsw_status_t fsw_hfs_dir_read (
     return status;
 }
 
-/**
- * Get the target path of a symbolic link. This function is called when a symbolic
- * link needs to be resolved. The core makes sure that the fsw_hfs_dnode_fill has been
- * called on the dnode and that it really is a symlink.
- *
- */
 static
 fsw_status_t fsw_hfs_readlink (
     struct fsw_hfs_volume *vol,

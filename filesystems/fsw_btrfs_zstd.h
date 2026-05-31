@@ -1,11 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2010-2021 Free Software Foundation, Inc.
 /*
  * Copyright (c) 2016-2020, Facebook, Inc.
  * All rights reserved.
  *
  */
 /**
-** Modified for RefindPlus
+** Modified for Meridian
 ** Copyright (c) 2021-2026 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.
@@ -44,10 +45,13 @@ static inline void put_unaligned_le16(uint16_t v, void *s) {
 
 #define UP_U32(a)	(((a)+3) >> 2)
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
 #include "zstd/xxhash.c"
 #include "zstd/zstd_decompress.c"
 #include "zstd/fse_decompress.c"
 #include "zstd/huf_decompress.c"
+#pragma GCC diagnostic pop
 
 #define ZSTD_BTRFS_MAX_WINDOWLOG 17
 #define ZSTD_BTRFS_MAX_INPUT (1 << ZSTD_BTRFS_MAX_WINDOWLOG)

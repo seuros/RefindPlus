@@ -1,49 +1,7 @@
-/*
- * From Grub2 for the BtrFS Driver
- */
-
-/* gzio.c - decompression support for gzip */
-/*
- *  GRUB  --  GRand Unified Bootloader
- *  Copyright (C) 1999,2005,2006,2007,2009  Free Software Foundation, Inc.
- *
- *  GRUB is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  GRUB is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-/*
- * Most of this file was originally the source file "inflate.c", written
- * by Mark Adler.  It has been very heavily modified.  In particular, the
- * original would run through the whole file at once, and this version can
- * be stopped and restarted on any boundary during the decompression process.
- *
- * The license and header comments that file are included here.
- */
-
-/* inflate.c -- Not copyrighted 1992 by Mark Adler
-   version c10p1, 10 January 1993 */
-
-/* You can do whatever you like with this source file, though I would
-   prefer that if you modify it and redistribute it that you include
-   comments to that effect with your name and the date.  Thank you.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2021-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-** Portions Copyright (c) 2021 Joe van Tunen (joevt@shaw.ca)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2021-2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2021 Joe van Tunen
 
 #if 0
 #include <grub/err.h>
@@ -59,90 +17,77 @@
 GRUB_MOD_LICENSE ("GPLv3+");
 #endif
 
-/*
- *  Window Size
- *
- *  This must be a power of two, and at least 32K for zip's deflate method
- */
-
 #define WSIZE   0x8000
-
 
 #define INBUFSIZ  0x2000
 
-/* The state stored in filesystem-specific data.  */
 struct grub_gzio
 {
   int err;
-  /* If input is in memory following fields are used instead of file.  */
+
   int mem_input_size, mem_input_off;
   uint8_t *mem_input;
-  /* The offset at which the data starts in the underlying file.  */
+
   int data_offset;
-  /* The type of current block.  */
+
   int block_type;
-  /* The length of current block.  */
+
   int block_len;
-  /* The flag of the last block.  */
+
   int last_block;
-  /* The flag of codes.  */
+
   int code_state;
-  /* The length of a copy.  */
+
   unsigned inflate_n;
-  /* The index of a copy.  */
+
   unsigned inflate_d;
-  /* The input buffer.  */
+
   uint8_t inbuf[INBUFSIZ];
   int inbuf_d;
-  /* The bit buffer.  */
+
   unsigned long bb;
-  /* The bits in the bit buffer.  */
+
   unsigned bk;
-  /* The sliding window in uncompressed data.  */
+
   uint8_t slide[WSIZE];
-  /* Current position in the slide.  */
+
   unsigned wp;
-  /* The literal/length code table.  */
+
   struct huft *tl;
-  /* The distance code table.  */
+
   struct huft *td;
-  /* The lookup bits for the literal/length code table. */
+
   int bl;
-  /* The lookup bits for the distance code table.  */
+
   int bd;
-  /* The original offset value.  */
+
   int saved_offset;
 };
 typedef struct grub_gzio *grub_gzio_t;
 
-/* Function prototypes */
 static void initialize_tables (grub_gzio_t);
 
-/* Little-Endian defines for the 2-byte magic numbers for gzip files.  */
 #define GZIP_MAGIC      grub_le_to_cpu16 (0x8B1F)
 #define OLD_GZIP_MAGIC  grub_le_to_cpu16 (0x9E1F)
 
-/* Compression methods (see algorithm.doc) */
 #define STORED      0
 #define COMPRESSED  1
-//#define PACKED      2
+
 #define LZHED       3
-/* methods 4 to 7 reserved */
+
 #define DEFLATED    8
 #define MAX_METHODS 9
 
-/* gzip flag byte */
-#define ASCII_FLAG   0x01       /* bit 0 set: file probably ascii text */
-#define CONTINUATION 0x02       /* bit 1 set: continuation of multi-part gzip file */
-#define EXTRA_FIELD  0x04       /* bit 2 set: extra field present */
-#define ORIG_NAME    0x08       /* bit 3 set: original file name present */
-#define COMMENT      0x10       /* bit 4 set: file comment present */
-#define ENCRYPTED    0x20       /* bit 5 set: file is encrypted */
-#define RESERVED     0xC0       /* bit 6,7:   reserved */
+#define ASCII_FLAG   0x01
+#define CONTINUATION 0x02
+#define EXTRA_FIELD  0x04
+#define ORIG_NAME    0x08
+#define COMMENT      0x10
+#define ENCRYPTED    0x20
+#define RESERVED     0xC0
 
 #define UNSUPPORTED_FLAGS       (CONTINUATION | ENCRYPTED | RESERVED)
 
-/* inflate block codes */
 #define INFLATE_STORED  0
 #define INFLATE_FIXED   1
 #define INFLATE_DYNAMIC 2
@@ -151,132 +96,46 @@ typedef unsigned char uch;
 typedef unsigned short ush;
 typedef unsigned long ulg;
 
-/* Huffman code lookup table entry--this entry is four bytes for machines
-   that have 16-bit pointers (e.g. PC's in the small or medium model).
-   Valid extra bits are 0..13.  e == 15 is EOB (end of block), e == 16
-   means that v is a literal, 16 < e < 32 means that v is a pointer to
-   the next table, which codes e - 16 bits, and lastly e == 99 indicates
-   an unused code.  If a code with e == 99 is looked up, this implies an
-   error in the data. */
 struct huft
 {
-  uch e;                        /* number of extra bits or operation */
-  uch b;                        /* number of bits in this code or subcode */
+  uch e;
+  uch b;
   union
     {
-      ush n;                    /* literal, length base, or distance base */
-      struct huft *t;           /* pointer to next level of table */
+      ush n;
+      struct huft *t;
     }
   v;
 };
 
-
-/* The inflate algorithm uses a sliding 32K byte window on the uncompressed
-   stream to find repeated byte strings.  This is implemented here as a
-   circular buffer.  The index is updated simply by incrementing and then
-   and'ing with 0x7fff (32K-1). */
-/* It is left to other modules to supply the 32K area.  It is assumed
-   to be usable as if it were declared "uch slide[32768];" or as just
-   "uch *slide;" and then malloc'ed in the latter case.  The definition
-   must be in unzip.h, included above. */
-
-
-/* Tables for deflate from PKZIP's appnote.txt. */
 static unsigned bitorder[] =
-{                               /* Order of the bit length code lengths */
+{
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 static ush cplens[] =
-{                               /* Copy lengths for literal codes 257..285 */
+{
   3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
   35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};
-        /* note: see note #13 above about the 258 in this list. */
+
 static ush cplext[] =
-{                               /* Extra bits for literal codes 257..285 */
+{
   0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-  3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99};       /* 99==invalid */
+  3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99};
 static ush cpdist[] =
-{                               /* Copy offsets for distance codes 0..29 */
+{
   1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
   257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
   8193, 12289, 16385, 24577};
 static ush cpdext[] =
-{                               /* Extra bits for distance codes */
+{
   0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
   7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
   12, 12, 13, 13};
 
+static int lbits = 9;
+static int dbits = 6;
 
-/*
-   Huffman code decoding is performed using a multi-level table lookup.
-   The fastest way to decode is to simply build a lookup table whose
-   size is determined by the longest code.  However, the time it takes
-   to build this table can also be a factor if the data being decoded
-   is not very long.  The most common codes are necessarily the
-   shortest codes, so those codes dominate the decoding time, and hence
-   the speed.  The idea is you can have a shorter table that decodes the
-   shorter, more probable codes, and then point to subsidiary tables for
-   the longer codes.  The time it costs to decode the longer codes is
-   then traded against the time it takes to make longer tables.
-
-   This results of this trade are in the variables lbits and dbits
-   below.  lbits is the number of bits the first level table for literal/
-   length codes can decode in one step, and dbits is the same thing for
-   the distance codes.  Subsequent tables are also less than or equal to
-   those sizes.  These values may be adjusted either when all of the
-   codes are shorter than that, in which case the longest code length in
-   bits is used, or when the shortest code is *longer* than the requested
-   table size, in which case the length of the shortest code in bits is
-   used.
-
-   There are two different values for the two tables, since they code a
-   different number of possibilities each.  The literal/length table
-   codes 286 possible values, or in a flat code, a little over eight
-   bits.  The distance table codes 30 possible values, or a little less
-   than five bits, flat.  The optimum values for speed end up being
-   about one bit more than those, so lbits is 8+1 and dbits is 5+1.
-   The optimum values may differ though from machine to machine, and
-   possibly even between compilers.  Your mileage may vary.
- */
-
-
-static int lbits = 9;           /* bits in base literal/length lookup table */
-static int dbits = 6;           /* bits in base distance lookup table */
-
-
-/* If BMAX needs to be larger than 16, then h and x[] should be ulg. */
-#define BMAX 16                 /* maximum bit length of any code (16 for explode) */
-#define N_MAX 288               /* maximum number of codes in any set */
-
-
-/* Macros for inflate() bit peeking and grabbing.
-   The usage is:
-
-        NEEDBITS(j)
-        x = b & mask_bits[j];
-        DUMPBITS(j)
-
-   where NEEDBITS makes sure that b has at least j bits in it, and
-   DUMPBITS removes the bits from b.  The macros use the variable k
-   for the number of bits in b.  Normally, b and k are register
-   variables for speed, and are initialized at the beginning of a
-   routine that uses these macros from a global bit buffer and count.
-
-   If we assume that EOB will be the longest code, then we will never
-   ask for bits with NEEDBITS that are beyond the end of the stream.
-   So, NEEDBITS should not read any more bytes than are needed to
-   meet the request.  Then no bytes need to be "returned" to the buffer
-   at the end of the last block.
-
-   However, this assumption is not true for fixed blocks--the EOB code
-   is 7 bits, but the other literal/length codes can be 8 or 9 bits.
-   (The EOB code is shorter than other codes because fixed blocks are
-   generally short.  So, while a block always has an EOB, many other
-   literal/length codes have a significantly lower probability of
-   showing up at all.)  However, by making the first table have a
-   lookup of seven bits, the EOB code will be found in that first
-   lookup, and so will not require that too many bits be pulled
-   from the stream.
- */
+#define BMAX 16
+#define N_MAX 288
 
 static ush mask_bits[] =
 {
@@ -285,9 +144,6 @@ static ush mask_bits[] =
   0x01ff, 0x03ff, 0x07ff, 0x0fff, 0x1fff, 0x3fff, 0x7fff, 0xffff
 };
 
-// DA-TAG: 28 Nov 2021 - Make conditional to fix Mac OS Clang warning
-//         19 Aug 2025 - Improve condition definition For portability
-//                       Clang defines GNUC so must be excluded first
 #if !defined(__clang__)
 #   if defined(__GNUC__)
 #       pragma GCC diagnostic ignored "-Wunsafe-loop-optimizations"
@@ -314,99 +170,86 @@ gzio_seek (grub_gzio_t gzio, grub_off_t off)
         gzio->mem_input_off = off;
 }
 
-/* More function prototypes */
 static int huft_build (unsigned *, unsigned, unsigned, ush *, ush *,
                        struct huft **, int *);
 static int huft_free (struct huft *);
 static int inflate_codes_in_window (grub_gzio_t);
 
-
-/* Given a list of code lengths and a maximum table size, make a set of
-   tables to decode that set of codes.  Return zero on success, one if
-   the given code set is incomplete (the tables are still built in this
-   case), two if the input is invalid (all zero length codes or an
-   oversubscribed set of lengths), and three if not enough memory. */
-
 static int
-huft_build (unsigned *b,        /* code lengths in bits (all assumed <= BMAX) */
-            unsigned n,         /* number of codes (assumed <= N_MAX) */
-            unsigned s,         /* number of simple-valued codes (0..s-1) */
-            ush * d,            /* list of base values for non-simple codes */
-            ush * e,            /* list of extra bits for non-simple codes */
-            struct huft **t,    /* result: starting table */
-            int *m)             /* maximum lookup bits, returns actual */
+huft_build (unsigned *b,
+            unsigned n,
+            unsigned s,
+            ush * d,
+            ush * e,
+            struct huft **t,
+            int *m)
 {
-  unsigned a;                   /* counter for codes of length k */
-  unsigned c[BMAX + 1];         /* bit length count table */
-  unsigned f;                   /* i repeats in table every f entries */
-  int g;                        /* maximum code length */
-  int h;                        /* table level */
-  register unsigned i;          /* counter, current code */
-  register unsigned j;          /* counter */
-  register int k;               /* number of bits in current code */
-  int l;                        /* bits per table (returned in m) */
-  register unsigned *p;         /* pointer into c[], b[], or v[] */
-  register struct huft *q;      /* points to current table */
-  struct huft r;                /* table entry for structure assignment */
-  struct huft *u[BMAX];         /* table stack */
-  unsigned v[N_MAX];            /* values in order of bit length */
-  register int w;               /* bits before this table == (l * h) */
-  unsigned x[BMAX + 1];         /* bit offsets, then code stack */
-  unsigned *xp;                 /* pointer into x */
-  int y;                        /* number of dummy codes added */
-  unsigned z;                   /* number of entries in current table */
+  unsigned a;
+  unsigned c[BMAX + 1];
+  unsigned f;
+  int g;
+  int h;
+  register unsigned i;
+  register unsigned j;
+  register int k;
+  int l;
+  register unsigned *p;
+  register struct huft *q;
+  struct huft r;
+  struct huft *u[BMAX];
+  unsigned v[N_MAX];
+  register int w;
+  unsigned x[BMAX + 1];
+  unsigned *xp;
+  int y;
+  unsigned z;
 
-  /* Generate counts for each bit length */
   FSW_DO_MEMZERO((char *) c, sizeof (c));
   p = b;
   i = n;
   do
     {
-      c[*p]++;                  /* assume all entries <= BMAX */
-      p++;                      /* Can't combine with above line (Solaris bug) */
+      c[*p]++;
+      p++;
     }
   while (--i);
-  if (c[0] == n)                /* null input--all zero length codes */
+  if (c[0] == n)
     {
       *t = (struct huft *) NULL;
       *m = 0;
       return 0;
     }
 
-  /* Find minimum and maximum length, bound *m by those */
   l = *m;
   for (j = 1; j <= BMAX; j++)
     if (c[j])
       break;
-  k = j;                        /* minimum code length */
+  k = j;
   if ((unsigned) l < j)
     l = j;
   for (i = BMAX; i; i--)
     if (c[i])
       break;
-  g = i;                        /* maximum code length */
+  g = i;
   if ((unsigned) l > i)
     l = i;
   *m = l;
 
-  /* Adjust last length count to fill out codes, if needed */
   for (y = 1 << j; j < i; j++, y <<= 1)
     if ((y -= c[j]) < 0)
-      return 2;                 /* bad input: more codes than bits */
+      return 2;
   if ((y -= c[i]) < 0)
     return 2;
   c[i] += y;
 
-  /* Generate starting offsets into the value table for each length */
   x[1] = j = 0;
   p = c + 1;
   xp = x + 2;
   while (--i)
-    {                           /* note that i == g from above */
+    {
       *xp++ = (j += *p++);
     }
 
-  /* Make a table of values in order of bit lengths */
   p = b;
   i = 0;
   do
@@ -416,44 +259,39 @@ huft_build (unsigned *b,        /* code lengths in bits (all assumed <= BMAX) */
     }
   while (++i < n);
 
-  /* Generate the Huffman codes and for each, make the table entries */
-  x[0] = i = 0;                 /* first Huffman code is zero */
-  p = v;                        /* grab values in bit order */
-  h = -1;                       /* no tables yet--level -1 */
-  w = -l;                       /* bits decoded == (l * h) */
-  u[0] = (struct huft *) NULL;  /* just to keep compilers happy */
-  q = (struct huft *) NULL;     /* ditto */
-  z = 0;                        /* ditto */
+  x[0] = i = 0;
+  p = v;
+  h = -1;
+  w = -l;
+  u[0] = (struct huft *) NULL;
+  q = (struct huft *) NULL;
+  z = 0;
 
-  /* go through the bit lengths (k already is bits in shortest code) */
   for (; k <= g; k++)
     {
       a = c[k];
       while (a--)
         {
-          /* here i is the Huffman code of length k bits for value *p */
-          /* make tables up to required level */
+
           while (k > w + l)
             {
               h++;
-              w += l;           /* previous table always l bits */
+              w += l;
 
-              /* compute minimum size table less than or equal to l bits */
-              z = (z = (unsigned) (g - w)) > (unsigned) l ? (unsigned) l : z;   /* upper limit on table size */
-              if ((f = 1 << (j = k - w)) > a + 1)       /* try a k-w bit table */
-                {               /* too few codes for k-w bit table */
-                  f -= a + 1;   /* deduct codes from patterns left */
+              z = (z = (unsigned) (g - w)) > (unsigned) l ? (unsigned) l : z;
+              if ((f = 1 << (j = k - w)) > a + 1)
+                {
+                  f -= a + 1;
                   xp = c + k;
-                  while (++j < z)       /* try smaller tables up to z bits */
+                  while (++j < z)
                     {
                       if ((f <<= 1) <= *++xp)
-                        break;  /* enough codes to use up j bits */
-                      f -= *xp; /* else deduct codes from patterns */
+                        break;
+                      f -= *xp;
                     }
                 }
-              z = 1 << j;       /* table entries for j-bit table */
+              z = 1 << j;
 
-              /* allocate and link in new table */
               q = (struct huft *) AllocatePool ((z + 1) * sizeof (struct huft));
               if (! q)
                 {
@@ -462,73 +300,61 @@ huft_build (unsigned *b,        /* code lengths in bits (all assumed <= BMAX) */
                   return 3;
                 }
 
-              *t = q + 1;       /* link to list for huft_free() */
+              *t = q + 1;
               *(t = &(q->v.t)) = (struct huft *) NULL;
-              u[h] = ++q;       /* table starts after link */
+              u[h] = ++q;
 
-              /* connect to last table, if there is one */
               if (h)
                 {
-                  x[h] = i;     /* save pattern for backing up */
-                  r.b = (uch) l;        /* bits to dump before this table */
-                  r.e = (uch) (16 + j);         /* bits in this table */
-                  r.v.t = q;    /* pointer to this table */
-                  j = i >> (w - l);     /* (get around Turbo C bug) */
-                  u[h - 1][j] = r;      /* connect to last table */
+                  x[h] = i;
+                  r.b = (uch) l;
+                  r.e = (uch) (16 + j);
+                  r.v.t = q;
+                  j = i >> (w - l);
+                  u[h - 1][j] = r;
                 }
             }
 
-          /* set up table entry in r */
           r.b = (uch) (k - w);
           if (p >= v + n)
-            r.e = 99;           /* out of values--invalid code */
+            r.e = 99;
           else if (*p < s)
             {
-              r.e = (uch) (*p < 256 ? 16 : 15);         /* 256 is end-of-block code */
-              r.v.n = (ush) (*p);       /* simple code is just the value */
-              p++;              /* one compiler does not like *p++ */
+              r.e = (uch) (*p < 256 ? 16 : 15);
+              r.v.n = (ush) (*p);
+              p++;
             }
           else
             {
-              r.e = (uch) e[*p - s];    /* non-simple--look up in lists */
+              r.e = (uch) e[*p - s];
               r.v.n = d[*p++ - s];
             }
 
-          /* fill code-like entries with r */
           f = 1 << (k - w);
           for (j = i >> w; j < z; j += f)
             /* coverity[uninit_use: SUPPRESS] */
             q[j] = r;
 
-          /* backwards increment the k-bit code i */
           for (j = 1 << (k - 1); i & j; j >>= 1)
             i ^= j;
           i ^= j;
 
-          /* backup over finished tables */
           while ((i & ((1 << w) - 1)) != x[h])
             {
-              h--;              /* do not need to update q */
+              h--;
               w -= l;
             }
         }
     }
 
-  /* Return true (1) if we were given an incomplete table */
   return y != 0 && g != 1;
 }
 
-
-/* Free the malloc'ed tables built by huft_build(), which makes a linked
-   list of the tables it made, with the links in a dummy first entry of
-   each table.  */
 static int
 huft_free (struct huft *t)
 {
   register struct huft *p, *q;
 
-
-  /* Go through linked list, freeing from the malloced (t[-1]) address. */
   p = t;
   while (p != (struct huft *) NULL)
     {
@@ -539,34 +365,26 @@ huft_free (struct huft *t)
   return 0;
 }
 
-
-/*
- *  inflate (decompress) the codes in a deflated (compressed) block.
- *  Return an error code or zero if it all goes ok.
- */
-
 static int
 inflate_codes_in_window (grub_gzio_t gzio)
 {
-  register unsigned e;          /* table entry flag/number of extra bits */
-  unsigned n, d;                /* length and index for copy */
-  unsigned w;                   /* current window position */
-  struct huft *t;               /* pointer to table entry */
-  unsigned ml, md;              /* masks for bl and bd bits */
-  register ulg b;               /* bit buffer */
-  register unsigned k;          /* number of bits in bit buffer */
+  register unsigned e;
+  unsigned n, d;
+  unsigned w;
+  struct huft *t;
+  unsigned ml, md;
+  register ulg b;
+  register unsigned k;
 
-  /* make local copies of globals */
   d = gzio->inflate_d;
   n = gzio->inflate_n;
-  b = gzio->bb;                 /* initialize bit buffer */
+  b = gzio->bb;
   k = gzio->bk;
-  w = gzio->wp;                 /* initialize window position */
+  w = gzio->wp;
 
-  /* inflate the coded data */
-  ml = mask_bits[gzio->bl];     /* precompute masks for speed */
+  ml = mask_bits[gzio->bl];
   md = mask_bits[gzio->bd];
-  while (1)                     /* do until end of block */
+  while (1)
     {
       if (! gzio->code_state)
         {
@@ -586,28 +404,26 @@ inflate_codes_in_window (grub_gzio_t gzio)
             while ((e = (t = t->v.t + ((unsigned) b & mask_bits[e]))->e) > 16);
           DUMPBITS (t->b);
 
-          if (e == 16)          /* then it is a literal */
+          if (e == 16)
             {
               gzio->slide[w++] = (uch) t->v.n;
               if (w == WSIZE)
                 break;
             }
           else
-            /* it is an EOB or a length */
+
             {
-              /* exit if end of block */
+
               if (e == 15)
                 {
                   gzio->block_len = 0;
                   break;
                 }
 
-              /* get length of block to copy */
               NEEDBITS (e);
               n = t->v.n + ((unsigned) b & mask_bits[e]);
               DUMPBITS (e);
 
-              /* decode distance of block to copy */
               NEEDBITS ((unsigned) gzio->bd);
               if ((e = (t = gzio->td + ((unsigned) b & md))->e) > 16)
                 do
@@ -633,7 +449,7 @@ inflate_codes_in_window (grub_gzio_t gzio)
 
       if (gzio->code_state)
         {
-          /* do the copy */
+
           do
             {
               n -= (e = (e = WSIZE - ((d &= WSIZE - 1) > w ? d : w)) > n ? n
@@ -646,7 +462,7 @@ inflate_codes_in_window (grub_gzio_t gzio)
                   d += e;
                 }
               else
-                /* purposefully use the overlap for extra copies here!! */
+
                 {
                   while (e--)
                     gzio->slide[w++] = gzio->slide[d++];
@@ -660,39 +476,31 @@ inflate_codes_in_window (grub_gzio_t gzio)
           if (! n)
             gzio->code_state--;
 
-          /* did we break from the loop too soon? */
           if (w == WSIZE)
             break;
         }
     }
 
-  /* restore the globals from the locals */
   gzio->inflate_d = d;
   gzio->inflate_n = n;
-  gzio->wp = w;                 /* restore global window pointer */
-  gzio->bb = b;                 /* restore global bit buffer */
+  gzio->wp = w;
+  gzio->bb = b;
   gzio->bk = k;
 
   return ! gzio->block_len;
 }
 
-
-/* get header for an inflated type 0 (stored) block. */
-
 static void
 init_stored_block (grub_gzio_t gzio)
 {
-  register ulg b;               /* bit buffer */
-  register unsigned k;          /* number of bits in bit buffer */
+  register ulg b;
+  register unsigned k;
 
-  /* make local copies of globals */
-  b = gzio->bb;                 /* initialize bit buffer */
+  b = gzio->bb;
   k = gzio->bk;
 
-  /* go to byte boundary */
   DUMPBITS (k & 7);
 
-  /* get the length and its complement */
   NEEDBITS (16);
   gzio->block_len = ((unsigned) b & 0xffff);
   DUMPBITS (16);
@@ -701,30 +509,23 @@ init_stored_block (grub_gzio_t gzio)
     gzio->err = -1;
   DUMPBITS (16);
 
-  /* restore global variables */
   gzio->bb = b;
   gzio->bk = k;
 }
 
-
-/* get header for an inflated type 1 (fixed Huffman codes) block.  We should
-   either replace this with a custom decoder, or at least precompute the
-   Huffman tables. */
-
 static void
 init_fixed_block (grub_gzio_t gzio)
 {
-  int i;                        /* temporary variable */
-  unsigned l[288];              /* length list for huft_build */
+  int i;
+  unsigned l[288];
 
-  /* set up literal table */
   for (i = 0; i < 144; i++)
     l[i] = 8;
   for (; i < 256; i++)
     l[i] = 9;
   for (; i < 280; i++)
     l[i] = 7;
-  for (; i < 288; i++)          /* make a complete, but wrong code set */
+  for (; i < 288; i++)
     l[i] = 8;
   gzio->bl = 7;
   if (huft_build (l, 288, 257, cplens, cplext, &gzio->tl, &gzio->bl) != 0)
@@ -733,8 +534,7 @@ init_fixed_block (grub_gzio_t gzio)
       return;
     }
 
-  /* set up distance table */
-  for (i = 0; i < 30; i++)      /* make an incomplete code set */
+  for (i = 0; i < 30; i++)
     l[i] = 5;
   gzio->bd = 5;
   if (huft_build (l, 30, 0, cpdist, cpdext, &gzio->td, &gzio->bd) > 1)
@@ -745,42 +545,36 @@ init_fixed_block (grub_gzio_t gzio)
       return;
     }
 
-  /* indicate we are now working on a block */
   gzio->code_state = 0;
   gzio->block_len++;
 }
 
-
-/* get header for an inflated type 2 (dynamic Huffman codes) block. */
-
 static void
 init_dynamic_block (grub_gzio_t gzio)
 {
-  int i;                        /* temporary variables */
+  int i;
   unsigned j;
-  unsigned l;                   /* last length */
-  unsigned m;                   /* mask for bit lengths table */
-  unsigned n;                   /* number of lengths to get */
-  unsigned nb;                  /* number of bit length codes */
-  unsigned nl;                  /* number of literal/length codes */
-  unsigned nd;                  /* number of distance codes */
-  unsigned ll[286 + 30];        /* literal/length and distance code lengths */
-  register ulg b;               /* bit buffer */
-  register unsigned k;          /* number of bits in bit buffer */
+  unsigned l;
+  unsigned m;
+  unsigned n;
+  unsigned nb;
+  unsigned nl;
+  unsigned nd;
+  unsigned ll[286 + 30];
+  register ulg b;
+  register unsigned k;
 
-  /* make local bit buffer */
   b = gzio->bb;
   k = gzio->bk;
 
-  /* read in table lengths */
   NEEDBITS (5);
-  nl = 257 + ((unsigned) b & 0x1f);     /* number of literal/length codes */
+  nl = 257 + ((unsigned) b & 0x1f);
   DUMPBITS (5);
   NEEDBITS (5);
-  nd = 1 + ((unsigned) b & 0x1f);       /* number of distance codes */
+  nd = 1 + ((unsigned) b & 0x1f);
   DUMPBITS (5);
   NEEDBITS (4);
-  nb = 4 + ((unsigned) b & 0xf);        /* number of bit length codes */
+  nb = 4 + ((unsigned) b & 0xf);
   DUMPBITS (4);
   if (nl > 286 || nd > 30)
     {
@@ -788,7 +582,6 @@ init_dynamic_block (grub_gzio_t gzio)
       return;
     }
 
-  /* read in bit-length-code lengths */
   for (j = 0; j < nb; j++)
     {
       NEEDBITS (3);
@@ -798,7 +591,6 @@ init_dynamic_block (grub_gzio_t gzio)
   for (; j < 19; j++)
     ll[bitorder[j]] = 0;
 
-  /* build decoding table for trees--single level, 7 bit lookup */
   gzio->bl = 7;
   if (huft_build (ll, 19, 19, NULL, NULL, &gzio->tl, &gzio->bl) != 0)
     {
@@ -806,7 +598,6 @@ init_dynamic_block (grub_gzio_t gzio)
       return;
     }
 
-  /* read in literal and distance code lengths */
   n = nl + nd;
   m = mask_bits[gzio->bl];
   i = l = 0;
@@ -816,9 +607,9 @@ init_dynamic_block (grub_gzio_t gzio)
       j = (gzio->td = gzio->tl + ((unsigned) b & m))->b;
       DUMPBITS (j);
       j = gzio->td->v.n;
-      if (j < 16)               /* length of code in bits (0..15) */
-        ll[i++] = l = j;        /* save last length in l */
-      else if (j == 16)         /* repeat last length 3 to 6 times */
+      if (j < 16)
+        ll[i++] = l = j;
+      else if (j == 16)
         {
           NEEDBITS (2);
           j = 3 + ((unsigned) b & 3);
@@ -831,7 +622,7 @@ init_dynamic_block (grub_gzio_t gzio)
           while (j--)
             ll[i++] = l;
         }
-      else if (j == 17)         /* 3 to 10 zero length codes */
+      else if (j == 17)
         {
           NEEDBITS (3);
           j = 3 + ((unsigned) b & 7);
@@ -846,7 +637,7 @@ init_dynamic_block (grub_gzio_t gzio)
           l = 0;
         }
       else
-        /* j == 18: 11 to 138 zero length codes */
+
         {
           NEEDBITS (7);
           j = 11 + ((unsigned) b & 0x7f);
@@ -862,16 +653,13 @@ init_dynamic_block (grub_gzio_t gzio)
         }
     }
 
-  /* free decoding table for trees */
   huft_free (gzio->tl);
   gzio->td = 0;
   gzio->tl = 0;
 
-  /* restore the global bit buffer */
   gzio->bb = b;
   gzio->bk = k;
 
-  /* build the decoding tables for literal/length and distance codes */
   gzio->bl = lbits;
   if (huft_build (ll, nl, 257, cplens, cplext, &gzio->tl, &gzio->bl) != 0)
     {
@@ -887,33 +675,27 @@ init_dynamic_block (grub_gzio_t gzio)
       return;
     }
 
-  /* indicate we are now working on a block */
   gzio->code_state = 0;
   gzio->block_len++;
 }
 
-
 static void
 get_new_block (grub_gzio_t gzio)
 {
-  register ulg b;               /* bit buffer */
-  register unsigned k;          /* number of bits in bit buffer */
+  register ulg b;
+  register unsigned k;
 
-  /* make local bit buffer */
   b = gzio->bb;
   k = gzio->bk;
 
-  /* read in last block bit */
   NEEDBITS (1);
   gzio->last_block = (int) b & 1;
   DUMPBITS (1);
 
-  /* read in block type */
   NEEDBITS (2);
   gzio->block_type = (unsigned) b & 3;
   DUMPBITS (2);
 
-  /* restore the global bit buffer */
   gzio->bb = b;
   gzio->bk = k;
 
@@ -933,16 +715,11 @@ get_new_block (grub_gzio_t gzio)
     }
 }
 
-
 static void
 inflate_window (grub_gzio_t gzio)
 {
-  /* initialize window */
-  gzio->wp = 0;
 
-  /*
-   *  Main decompression loop.
-   */
+  gzio->wp = 0;
 
   while (gzio->wp < WSIZE && !gzio->err)
     {
@@ -960,16 +737,9 @@ inflate_window (grub_gzio_t gzio)
       if (gzio->err)
         return;
 
-      /*
-       *  Expand stored block here.
-       */
       if (gzio->block_type == INFLATE_STORED)
         {
           int w = gzio->wp;
-
-          /*
-           *  This is basically a glorified pass-through
-           */
 
           while (gzio->block_len && w < WSIZE && !gzio->err)
             {
@@ -981,10 +751,6 @@ inflate_window (grub_gzio_t gzio)
 
           continue;
         }
-
-      /*
-       *  Expand other kind of block.
-       */
 
       /* coverity[var_deref_model: SUPPRESS] */
       if (inflate_codes_in_window (gzio))
@@ -998,9 +764,7 @@ inflate_window (grub_gzio_t gzio)
 
   gzio->saved_offset += WSIZE;
 
-  /* XXX do CRC calculation here! */
 }
-
 
 static void
 initialize_tables (grub_gzio_t gzio)
@@ -1008,19 +772,15 @@ initialize_tables (grub_gzio_t gzio)
   gzio->saved_offset = 0;
   gzio_seek (gzio, gzio->data_offset);
 
-  /* Initialize the bit buffer.  */
   gzio->bk = 0;
   gzio->bb = 0;
 
-  /* Reset partial decompression code.  */
   gzio->last_block = 0;
   gzio->block_len = 0;
 
-  /* Reset memory allocation stuff.  */
   huft_free (gzio->tl);
   huft_free (gzio->td);
 }
-
 
 static int
 test_zlib_header (grub_gzio_t gzio)
@@ -1030,7 +790,6 @@ test_zlib_header (grub_gzio_t gzio)
   cmf = get_byte (gzio);
   flg = get_byte (gzio);
 
-  /* Check that compression method is DEFLATE.  */
   if ((cmf & 0xf) != DEFLATED)
     {
       return 0;
@@ -1041,7 +800,6 @@ test_zlib_header (grub_gzio_t gzio)
       return 0;
     }
 
-  /* Dictionary is not supported.  */
   if (flg & 0x20)
     {
       return 0;
@@ -1059,15 +817,8 @@ grub_gzio_read_real (grub_gzio_t gzio, grub_off_t offset,
 {
   grub_ssize_t ret = 0;
 
-  /* Do we reset decompression to the beginning of the file?  */
   if (gzio->saved_offset > offset + WSIZE)
     initialize_tables (gzio);
-
-  /*
-   *  This loop operates upon uncompressed data only.  The only
-   *  special thing it does is to make sure the decompression
-   *  window is within the range of data it needs.
-   */
 
   while (len > 0 && !gzio->err)
     {
@@ -1120,6 +871,5 @@ grub_zlib_decompress (char *inbuf, grub_size_t insize, grub_off_t off,
   ret = grub_gzio_read_real (gzio, off, outbuf, outsize);
   FreePool (gzio);
 
-  /* FIXME: Check Adler.  */
   return ret;
 }

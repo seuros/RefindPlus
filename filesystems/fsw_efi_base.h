@@ -1,62 +1,14 @@
-/**
- * \file fsw_efi_base.h
- * Base definitions for the EFI host environment.
- */
-
-/*
- * Copyright (c) 2006 Christoph Pfisterer
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the
- *    distribution.
- *
- *  * Neither the name of Christoph Pfisterer nor the names of the
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the MIT License.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #ifndef _FSW_EFI_BASE_H_
 #define _FSW_EFI_BASE_H_
 
-// If its EDK2 UEFI Toolkit
-#ifdef __MAKEWITH_TIANO
 #include "fsw_efi_edk2_base.h"
-#else
-// Intel UEFI Toolkit
-#include <efi.h>
-#include <efilib.h>
-#endif
 
 #define FSW_LITTLE_ENDIAN (1)
-
-
-// types, reuse EFI types
 
 typedef INT8    fsw_s8;
 typedef UINT8   fsw_u8;
@@ -67,29 +19,16 @@ typedef UINT32  fsw_u32;
 typedef INT64   fsw_s64;
 typedef UINT64  fsw_u64;
 
-
-// allocation functions
-
 #define FSW_DO_ALLOC(size, ptrptr) (((*(ptrptr) = AllocatePool (size)) == NULL) ? FSW_OUT_OF_MEMORY : FSW_SUCCESS)
 #define FSW_DO_FREE(ptr) FreePool(ptr)
-
-// memory functions
 
 #define FSW_DO_MEMZERO(dest,size) ZeroMem(dest,size)
 #define FSW_DO_MEMCPY(dest,src,size) CopyMem(dest,src,size)
 #define FSW_DO_MEMEQ(p1,p2,size) (CompareMem(p1,p2,size) == 0)
 
-// message printing
-
 #define FSW_MSG_STR(s) L##s
 #define FSW_MSG_OUT Print
 
-// 64-bit hooks
-
 #define FSW_U64_SHR(val,shiftbits) RShiftU64((val), (shiftbits))
 #define FSW_U64_DIV(val,divisor) DivU64x32((val), (divisor), NULL)
-#ifdef __MAKEWITH_GNUEFI
-#define DivU64x32Remainder DivU64x32
-#endif
-
 #endif

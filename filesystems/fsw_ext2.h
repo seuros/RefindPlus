@@ -1,31 +1,7 @@
-/**
- * \file fsw_ext2.h
- * ext2 file system driver header.
- */
-
-/*
- * Copyright (c) 2006 Christoph Pfisterer
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #ifndef _FSW_EXT2_H_
 #define _FSW_EXT2_H_
@@ -36,40 +12,25 @@
 
 #include "fsw_ext2_disk.h"
 
-
-//! Block size to be used when reading the ext2 superblock.
 #define EXT2_SUPERBLOCK_BLOCKSIZE  1024
-//! Block number where the (master copy of the) ext2 superblock resides.
+
 #define EXT2_SUPERBLOCK_BLOCKNO       1
 
-
-/**
- * ext2: Volume structure with ext2-specific data.
- */
-
 struct fsw_ext2_volume {
-    struct fsw_volume g;            //!< Generic volume structure
+    struct fsw_volume g;
 
-    struct ext2_super_block *sb;    //!< Full raw ext2 superblock structure
-    fsw_u32     *inotab_bno;        //!< Block numbers of the inode tables
-    fsw_u32     ind_bcnt;           //!< Number of blocks addressable through an indirect block
-    fsw_u32     dind_bcnt;          //!< Number of blocks addressable through a double-indirect block
-    fsw_u32     inode_size;         //!< Size of inode structure in bytes
+    struct ext2_super_block *sb;
+    fsw_u32     *inotab_bno;
+    fsw_u32     ind_bcnt;
+    fsw_u32     dind_bcnt;
+    fsw_u32     inode_size;
 };
-
-/**
- * ext2: Dnode structure with ext2-specific data.
- */
 
 struct fsw_ext2_dnode {
-    struct fsw_dnode g;             //!< Generic dnode structure
+    struct fsw_dnode g;
 
-    struct ext2_inode *raw;         //!< Full raw inode structure
+    struct ext2_inode *raw;
 };
-
-//
-// functions
-//
 
 fsw_status_t fsw_ext2_volume_mount (
     struct fsw_ext2_volume  *vol

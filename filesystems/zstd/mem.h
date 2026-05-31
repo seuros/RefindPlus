@@ -14,7 +14,7 @@
  * ("BSD").
  */
 /**
-** Modified for RefindPlus
+** Modified for Meridian
 ** Copyright (c) 2025 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.

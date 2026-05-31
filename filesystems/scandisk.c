@@ -1,43 +1,10 @@
-/*
- * scandisk.c
- * Scan disks for BtrFS multi-devices
- * by Samuel Liao
- *
- * Copyright (c) 2013 Tencent, Inc.
- */
-/*
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2020-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2026 Dayo Akanji
 
 #include "fsw_efi.h"
-#ifdef __MAKEWITH_GNUEFI
-#include "edk2/DriverBinding.h"
-#include "edk2/ComponentName.h"
-extern EFI_GUID gMyEfiDiskIoProtocolGuid;
-extern EFI_GUID gMyEfiBlockIoProtocolGuid;
-#else
 #define gMyEfiBlockIoProtocolGuid gEfiBlockIoProtocolGuid
 #define gMyEfiDiskIoProtocolGuid gEfiDiskIoProtocolGuid
-#endif
-
-#include "../include/refit_call_wrapper.h"
 
 extern struct fsw_host_table   fsw_efi_host_table;
 static void dummy_volume_free (struct fsw_volume *vol) { }
@@ -46,16 +13,16 @@ static struct fsw_fstype_table   dummy_fstype = {
     sizeof (struct fsw_volume),
     sizeof (struct fsw_dnode),
 
-    NULL, //volume_mount,
-    dummy_volume_free, //volume_free,
-    NULL, //volume_stat,
-    NULL, //dnode_fill,
-    NULL, //dnode_free,
-    NULL, //dnode_stat,
-    NULL, //get_extent,
-    NULL, //dir_lookup,
-    NULL, //dir_read,
-    NULL, //readlink,
+    NULL,
+    dummy_volume_free,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
 };
 
 static
@@ -75,9 +42,9 @@ struct fsw_volume * dsk_btrfs_create_dummy_volume (
         FSW_DO_FREE(vol);
         return NULL;
     }
-    /* fstype_table->volume_free for fsw_unmount */
+
     vol->fstype_table = &dummy_fstype;
-    /* host_data needded to fsw_block_get()/fsw_efi_read_block() */
+
     Volume->DiskIo = diskio;
     Volume->MediaId = mediaid;
 
@@ -115,44 +82,27 @@ int dsk_btrfs_scan_disks (
     UINTN       HandleCount = 0;
     UINTN       scanned = 0;
 
-    // DA-TAG: Investigate This (From Upstream - Likely a Memory Conflict)
-    //
-    // Driver hangs if compiled with GNU-EFI without 'Print()' statement.
-#if defined(__MAKEWITH_GNUEFI)
-    Print(L" ");
-#endif
-
     FSW_MSG_L03((
         FSW_MSG_STR(
             "SCANDISK: dsk_btrfs_scan_disks ... Scanning Disks\n"
         )
     ));
 
-    Status = REFIT_CALL_5_WRAPPER(
-        gBS->LocateHandleBuffer, ByProtocol,
-        &gMyEfiDiskIoProtocolGuid, NULL,
-        &HandleCount, &Handles
-    );
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gMyEfiDiskIoProtocolGuid, NULL, &HandleCount, &Handles);
     if (Status == EFI_NOT_FOUND) {
-        return -1;  // No filesystems ... Strange, but true!
+        return -1;
     }
 
     for (i = 0; i < HandleCount; i++) {
         EFI_DISK_IO_PROTOCOL *diskio;
         EFI_BLOCK_IO_PROTOCOL *blockio;
 
-        Status = REFIT_CALL_3_WRAPPER(
-            gBS->HandleProtocol, Handles[i],
-            &gMyEfiDiskIoProtocolGuid, (VOID **) &diskio
-        );
+        Status = gBS->HandleProtocol(Handles[i], &gMyEfiDiskIoProtocolGuid, (VOID **) &diskio);
         if (Status != 0) {
             continue;
         }
 
-        Status = REFIT_CALL_3_WRAPPER(
-            gBS->HandleProtocol, Handles[i],
-            &gMyEfiBlockIoProtocolGuid, (VOID **) &blockio
-        );
+        Status = gBS->HandleProtocol(Handles[i], &gMyEfiBlockIoProtocolGuid, (VOID **) &blockio);
         if (Status != 0) {
             continue;
         }

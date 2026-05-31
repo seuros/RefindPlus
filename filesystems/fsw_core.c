@@ -1,71 +1,14 @@
-/* $Id: fsw_core.c 29125 2010-05-06 09:43:05Z vboxsync $ */
-/** @file
- * fsw_core.c - Core File System Wrapper Abstraction Layer.
-**/
-
-/**
- * This code is based on:
- *
- * Copyright (c) 2006 Christoph Pfisterer
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the
- *    distribution.
- *
- *  * Neither the name of Christoph Pfisterer nor the names of the
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**/
-/**
-** Modified for RefindPlus
-** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the MIT License.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2006 Christoph Pfisterer
 
 #include "fsw_core.h"
 #include "fsw_efi.h"
 
-
-// functions
-
 static void fsw_blockcache_free(struct fsw_volume *vol);
 
 #define MAX_CACHE_LEVEL (5)
-
-/**
- * Mount a volume with a given filesystem driver. This function is called by
- * the host driver to make a volume accessible. The filesystem driver to use
- * is specified by a pointer to its dispatch table. The filesystem driver will
- * look at the data on the volume to determine if it can read the format.
- * If the volume is found unsuitable, FSW_UNSUPPORTED is returned.
- *
- * If this function returns FSW_SUCCESS, *vol_out points at a valid volume data
- * structure. The caller must release it later by calling fsw_unmount.
- *
- * If this function returns an error status, the caller only needs to clean up
- * its own buffers that may have been allocated through the read_block interface.
-**/
 
 fsw_status_t fsw_mount (
     void                     *host_data,
@@ -76,8 +19,6 @@ fsw_status_t fsw_mount (
     fsw_status_t    status;
     struct fsw_volume *vol;
 
-
-    // Allocate memory for the structure
     status = fsw_alloc_zero (
         fstype_table->volume_struct_size,
         (void **) &vol
@@ -92,7 +33,6 @@ fsw_status_t fsw_mount (
         return status;
     }
 
-    // Initialize fields
     vol->phys_blocksize   = 512;
     vol->log_blocksize    = 512;
     vol->label.type       = FSW_STRING_TYPE_EMPTY;
@@ -101,7 +41,6 @@ fsw_status_t fsw_mount (
     vol->fstype_table     = fstype_table;
     vol->host_string_type = host_table->native_string_type;
 
-    // Let the driver mount the filesystem
     status = vol->fstype_table->volume_mount (vol);
     if (status) goto errorexit;
 
@@ -120,19 +59,10 @@ errorexit:
     return status;
 }
 
-/**
- * Unmount a volume by releasing all memory associated with it. This function
- * is called by the host driver when a volume is no longer needed. It is also
- * called by the core after a failed mount to clean up any allocated memory.
- *
- * Note that all dnodes must have been released before calling this function.
-**/
-
 void fsw_unmount (
     struct fsw_volume *vol
 ) {
     if (vol->root) fsw_dnode_release (vol->root);
-    // TODO: check that no other dnodes are still around
 
     vol->fstype_table->volume_free (vol);
 
@@ -141,11 +71,6 @@ void fsw_unmount (
     FSW_DO_FREE(vol);
 }
 
-/**
- * Get in-depth information on the volume. This function can be called
- * by the host driver to get additional information on the volume.
-**/
-
 fsw_status_t fsw_volume_stat (
     struct fsw_volume      *vol,
     struct fsw_volume_stat *sb
@@ -153,33 +78,14 @@ fsw_status_t fsw_volume_stat (
     return vol->fstype_table->volume_stat (vol, sb);
 }
 
-/**
- * Set the physical and logical block sizes of the volume. This functions is
- * called by the filesystem driver to announce the block sizes it wants to use
- * for accessing the disk (physical) and for addressing file contents (logical).
- * Usually both sizes will be the same but there may be filesystems that need
- *to access  metadata at a smaller block size than the allocation unit for files.
- *
- * Calling this function causes the block cache to be dropped. All pointers
- * returned from fsw_block_get become invalid. This function should only be
- * called while mounting the filesystem, not as a part of file access operations.
- *
- * Both sizes are measured in bytes, must be powers of 2, and at least 512 bytes.
- * The logical block size cannot be smaller than the physical block size.
-**/
-
 void fsw_set_blocksize (
     struct fsw_volume *vol,
     fsw_u32            phys_blocksize,
     fsw_u32            log_blocksize
 ) {
-    // TODO: Check the sizes. Both must be powers of 2.
-    //       log_blocksize must not be smaller than phys_blocksize.
 
-    // drop core block cache if present
     fsw_blockcache_free (vol);
 
-    // signal host driver to drop caches etc.
     vol->host_table->change_blocksize (
         vol,
         vol->phys_blocksize, vol->log_blocksize,
@@ -189,24 +95,6 @@ void fsw_set_blocksize (
     vol->phys_blocksize = phys_blocksize;
     vol->log_blocksize  = log_blocksize;
 }
-
-/**
- * Get a block of data from the disk. This function is called by the filesystem
- * driver or by core functions. It calls through to the host driver's device
- * access routine. Given a physical block number, it reads the block into memory
- * (or fetches it from the block cache) and returns the address of the memory
- * buffer. The caller should provide an indication of how important the block
- * is in the cache_level parameter. Blocks with a low level are purged first.
- *
- * Some suggestions for cache levels:
- *   - 0: File data
- *   - 1: Directory data, symlink data
- *   - 2: Filesystem metadata
- *   - 3..5: Filesystem metadata with a high rate of access
- *
- * If this function returns successfully, the returned data pointer is valid
- * until the caller calls fsw_block_release.
-**/
 
 fsw_status_t fsw_block_get (
     struct VOLSTRUCTNAME  *vol,
@@ -218,19 +106,15 @@ fsw_status_t fsw_block_get (
     fsw_u32                i, discard_level, new_bcache_size;
     struct fsw_blockcache *new_bcache;
 
-    // TODO: Allow the host driver to do its own caching;
-    //       Call through if appropriate function pointers are set
-
     if (cache_level > MAX_CACHE_LEVEL) {
         cache_level = MAX_CACHE_LEVEL;
     }
 
-    // Check block cache
     for (i = 0; i < vol->bcache_size; i++) {
         if (vol->bcache[i].phys_bno == phys_bno) {
-            // Cache Hit
+
             if (vol->bcache[i].cache_level < cache_level) {
-                vol->bcache[i].cache_level = cache_level;  // Promote entry
+                vol->bcache[i].cache_level = cache_level;
             }
 
             vol->bcache[i].refcount++;
@@ -240,7 +124,6 @@ fsw_status_t fsw_block_get (
         }
     }
 
-    // Find a free entry in the cache table
     for (i = 0; i < vol->bcache_size; i++) {
         if (vol->bcache[i].phys_bno == (fsw_u64) FSW_INVALID_BNO) {
             break;
@@ -263,7 +146,7 @@ fsw_status_t fsw_block_get (
         }
     }
     if (i >= vol->bcache_size) {
-        // Enlarge/Create Cache
+
         new_bcache_size = (
             vol->bcache_size < 16
         ) ? 16 : vol->bcache_size << 1;
@@ -297,7 +180,6 @@ fsw_status_t fsw_block_get (
         }
         i = vol->bcache_size;
 
-        // Switch caches
         if (vol->bcache != NULL) {
             FSW_DO_FREE(vol->bcache);
         }
@@ -306,7 +188,6 @@ fsw_status_t fsw_block_get (
     }
     vol->bcache[i].phys_bno = (fsw_u64) FSW_INVALID_BNO;
 
-    // Read the data
     if (vol->bcache[i].data == NULL) {
         status = FSW_DO_ALLOC(
             vol->phys_blocksize,
@@ -345,11 +226,6 @@ fsw_status_t fsw_block_get (
     return FSW_SUCCESS;
 }
 
-/**
- * Releases a disk block. This function must be called
- * to release disk blocks returned from fsw_block_get.
-**/
-
 void fsw_block_release (
     struct VOLSTRUCTNAME *vol,
     fsw_u64               phys_bno,
@@ -357,11 +233,6 @@ void fsw_block_release (
 ) {
     fsw_u32 i;
 
-
-    // TODO: Allow host driver to do its own caching;
-    //       Just call through if appropriate function pointers are set
-
-    // update block cache
     for (i = 0; i < vol->bcache_size; i++) {
         if (vol->bcache[i].refcount >  0 &&
             vol->bcache[i].phys_bno == phys_bno
@@ -371,16 +242,10 @@ void fsw_block_release (
     }
 }
 
-/**
- * Release the block cache. Called internally when changing block sizes and when
- * unmounting the volume. It frees all data occupied by the generic block cache.
-**/
-
 static void fsw_blockcache_free (
     struct fsw_volume *vol
 ) {
     fsw_u32 i;
-
 
     for (i = 0; i < vol->bcache_size; i++) {
         if (vol->bcache[i].data != NULL) {
@@ -395,12 +260,6 @@ static void fsw_blockcache_free (
     fsw_efi_clear_cache();
 }
 
-/**
- * Add a new dnode to the list of known dnodes. This internal function is used
- * when a dnode is created to add it to the dnode list that is used to search
- * for existing dnodes by id.
-**/
-
 static void fsw_dnode_register (
     struct fsw_volume *vol,
     struct fsw_dnode  *dno
@@ -413,13 +272,6 @@ static void fsw_dnode_register (
     vol->dnode_head = dno;
 }
 
-/**
- * Create a dnode representing the root directory. This function is called
- * by the filesystem driver while mounting the filesystem. The root directory
- * is special because it has no parent dnode, its name is defined to be empty,
- * and its type is fixed. Otherwise, this functions behaves as fsw_dnode_create.
-**/
-
 fsw_status_t fsw_dnode_create_root_with_tree (
     struct fsw_volume *vol,
     fsw_u64            tree_id,
@@ -429,8 +281,6 @@ fsw_status_t fsw_dnode_create_root_with_tree (
     fsw_status_t    status;
     struct fsw_dnode *dno;
 
-
-    // Allocate memory for the structure
     status = fsw_alloc_zero (
         vol->fstype_table->dnode_struct_size,
         (void **) &dno
@@ -445,7 +295,6 @@ fsw_status_t fsw_dnode_create_root_with_tree (
         return status;
     }
 
-    // Fill the structure
     dno->vol = vol;
     dno->parent = NULL;
     dno->tree_id = tree_id;
@@ -453,7 +302,6 @@ fsw_status_t fsw_dnode_create_root_with_tree (
     dno->refcount = 1;
     dno->type = FSW_DNODE_TYPE_DIR;
     dno->name.type = FSW_STRING_TYPE_EMPTY;
-    // TODO: Call a func to create an empty string in the native string type instead
 
     fsw_dnode_register(vol, dno);
 
@@ -470,23 +318,6 @@ fsw_status_t fsw_dnode_create_root (
         vol, 0, dnode_id, dno_out
     );
 }
-/**
- * Create a new dnode representing a filesystem object. This function is called
- * by the filesystem driver in response to directory lookup or read requests.
- * Note that if there already is a dnode with the given dnode_id on record,
- * then no new object is created. Instead, the existing dnode is returned and
- * its reference count increased. All other parameters are ignored in this case.
- *
- * The type passed into this function may be FSW_DNODE_TYPE_UNKNOWN.
- * It is sufficient to fill the type field during the dnode_fill call.
- *
- * The name parameter must describe a string with the object's name. A copy will
- * be stored in the dnode structure for future reference. The name will not be
- * used to shortcut directory lookups, but may be used to reconstruct paths.
- *
- * If the function returns successfully, *dno_out contains a pointer to the
- * dnode that must be released by the caller with fsw_dnode_release.
-**/
 
 fsw_status_t fsw_dnode_create_with_tree (
     struct fsw_dnode   *parent_dno,
@@ -500,7 +331,6 @@ fsw_status_t fsw_dnode_create_with_tree (
     struct fsw_volume *vol = parent_dno->vol;
     struct fsw_dnode  *dno;
 
-    // Check if we already have a dnode with the same id
     for (dno = vol->dnode_head; dno; dno = dno->next) {
         if (dno->dnode_id == dnode_id && dno->tree_id == tree_id) {
             fsw_dnode_retain (dno);
@@ -510,7 +340,6 @@ fsw_status_t fsw_dnode_create_with_tree (
         }
     }
 
-    // Allocate memory for the structure
     status = fsw_alloc_zero (
         vol->fstype_table->dnode_struct_size,
         (void **) &dno
@@ -525,7 +354,6 @@ fsw_status_t fsw_dnode_create_with_tree (
         return status;
     }
 
-    // Fill the structure
     dno->vol = vol;
     dno->parent = parent_dno;
     fsw_dnode_retain (dno->parent);
@@ -569,24 +397,11 @@ fsw_status_t fsw_dnode_create (
     );
 }
 
-/**
- * Increases the reference count of a dnode. This must be balanced with
- * fsw_dnode_release calls. Note that some dnode functions return
- * a retained dnode pointer to their caller.
-**/
-
 void fsw_dnode_retain (
     struct fsw_dnode *dno
 ) {
     dno->refcount++;
 }
-
-/**
- * Release a dnode pointer, deallocating it if this was the last reference.
- * This function decrements the reference counter of the dnode. If the counter
- * reaches zero, the dnode is freed. Since the parent dnode is released
- * during that process, this function may cause it to be freed, too.
-**/
 
 void fsw_dnode_release (
     struct fsw_dnode *dno
@@ -599,56 +414,31 @@ void fsw_dnode_release (
     if (dno->refcount == 0) {
         parent_dno = dno->parent;
 
-        // De-register from volume's list
         if (dno->next)              dno->next->prev = dno->prev;
         if (dno->prev)              dno->prev->next = dno->next;
         if (vol->dnode_head == dno) vol->dnode_head = dno->next;
 
-        // Run fstype-specific cleanup
         vol->fstype_table->dnode_free (vol, dno);
 
         fsw_strfree (&dno->name);
         FSW_DO_FREE(dno);
 
-        // Release pointer to the parent, possibly deallocating it, too
         if (parent_dno) fsw_dnode_release (parent_dno);
     }
 }
 
-/**
- * Get full information about a dnode from disk. This function is called by the
- * host driver as well as by the core functions. Some filesystems defer reading
- * full information on a dnode until it is actually needed (separation between
- * directory and inode information). This function makes sure that all
- * information is available in the dnode structure. The following fields
- * may not have correct values until fsw_dnode_fill has been called: type, size
-**/
-
 fsw_status_t fsw_dnode_fill (
     struct fsw_dnode *dno
 ) {
-    // TODO: Check a flag right here
-    //       Call fstype's dnode_fill only once per dnode
 
     return dno->vol->fstype_table->dnode_fill (dno->vol, dno);
 }
-
-/**
- * Get extended information about a dnode. This function can be called by the
- * host driver to get a full compliment of information about a dnode in
- * addition to the fields of the fsw_dnode structure itself.
- *
- * Some data requires host-specific conversion to be useful (i.e. timestamps)
- * and will be passed to callback functions instead of being written into
- * the structure. These callbacks must be filled in by the caller.
-**/
 
 fsw_status_t fsw_dnode_stat(
     struct fsw_dnode      *dno,
     struct fsw_dnode_stat *sb
 ) {
     fsw_status_t    status;
-
 
     status = fsw_dnode_fill (dno);
     if (status) {
@@ -675,25 +465,12 @@ fsw_status_t fsw_dnode_stat(
     return status;
 }
 
-/**
- * Lookup a directory entry by name. This function is called by the host driver.
- * Given a directory dnode and a file name, it looks up the named entry in the
- * directory.
- *
- * If the dnode is not a directory, the call will fail. The caller is responsible
- * for resolving symbolic links before calling this function.
- *
- * If the function returns FSW_SUCCESS, *child_dno_out points to the requested
- * directory entry. The caller must call fsw_dnode_release on it.
-**/
-
 fsw_status_t fsw_dnode_lookup (
     struct fsw_dnode   *dno,
     struct fsw_string  *lookup_name,
     struct fsw_dnode  **child_dno_out
 ) {
     fsw_status_t    status;
-
 
     status = fsw_dnode_fill (dno);
     if (status) {
@@ -723,16 +500,6 @@ fsw_status_t fsw_dnode_lookup (
     );
 }
 
-/**
- * Find a filesystem object by path. This function is called by the host driver.
- * Given a directory dnode and a relative or absolute path, it walks the directory
- * tree until it finds the target dnode. Intermediate symlink nodes are resolved
- * automatically. The target dnode is not resolved if it is a symlink.
- *
- * If the function returns FSW_SUCCESS, *child_dno_out points to the requested
- * directory entry. The caller must call fsw_dnode_release on it.
-**/
-
 fsw_status_t fsw_dnode_lookup_path (
     struct fsw_dnode *dno,
     struct fsw_string *lookup_path,
@@ -749,10 +516,9 @@ fsw_status_t fsw_dnode_lookup_path (
     remaining_path = *lookup_path;
     fsw_dnode_retain (dno);
 
-    // Loop over the path
     root_if_empty = 1;
     while (1) {
-        // Parse next path component
+
         fsw_strsplit (
             &lookup_name, &remaining_path, separator
         );
@@ -764,14 +530,14 @@ fsw_status_t fsw_dnode_lookup_path (
         ));
 
         if (fsw_strlen (&lookup_name) == 0) {
-            // Empty path component
+
             child_dno = (
                 root_if_empty
             ) ? vol->root : dno;
             fsw_dnode_retain (child_dno);
         }
         else {
-            // Load dno data
+
             status = fsw_dnode_fill (dno);
             if (status) {
                 FSW_MSG_L03((
@@ -783,7 +549,6 @@ fsw_status_t fsw_dnode_lookup_path (
                 goto errorexit;
             }
 
-            // Resolve symlink (if needed)
             if (dno->type == FSW_DNODE_TYPE_SYMLINK) {
                 status = fsw_dnode_resolve (dno, &child_dno);
                 if (status) {
@@ -796,12 +561,10 @@ fsw_status_t fsw_dnode_lookup_path (
                     goto errorexit;
                 }
 
-                // Retain symlink target as new dno
                 fsw_dnode_release (dno);
-                dno = child_dno;   // Already retained
+                dno = child_dno;
                 child_dno = NULL;
 
-                // Load dno data
                 status = fsw_dnode_fill (dno);
                 if (status) {
                     FSW_MSG_L03((
@@ -814,7 +577,6 @@ fsw_status_t fsw_dnode_lookup_path (
                 }
             }
 
-            // Ensure operating on a directory
             if (dno->type != FSW_DNODE_TYPE_DIR) {
                 status = FSW_UNSUPPORTED;
 
@@ -827,9 +589,8 @@ fsw_status_t fsw_dnode_lookup_path (
                 goto errorexit;
             }
 
-            // Check special paths
             if (fsw_streq_cstr (&lookup_name, ".")) {
-                // Self directory
+
                 child_dno = dno;
                 fsw_dnode_retain (child_dno);
 
@@ -842,10 +603,9 @@ fsw_status_t fsw_dnode_lookup_path (
             else if (
                 fsw_streq_cstr (&lookup_name, "..")
             ) {
-                // Parent directory
+
                 if (dno->parent == NULL) {
-                    // We cannot go up from the root directory.
-                    // Caution: Apps like the uEFI shell rely on this behaviour!
+
                     status = FSW_NOT_FOUND;
 
                     FSW_MSG_L03((
@@ -861,7 +621,7 @@ fsw_status_t fsw_dnode_lookup_path (
                 fsw_dnode_retain (child_dno);
             }
             else {
-                // Do an actual lookup
+
                 status = vol->fstype_table->dir_lookup (
                     vol, dno,
                     &lookup_name, &child_dno
@@ -879,9 +639,8 @@ fsw_status_t fsw_dnode_lookup_path (
         }
         if (root_if_empty) root_if_empty = 0;
 
-        // child_dno becomes new dno
         fsw_dnode_release (dno);
-        dno = child_dno;   // Already retained
+        dno = child_dno;
         child_dno = NULL;
 
         FSW_MSG_L03((
@@ -891,7 +650,7 @@ fsw_status_t fsw_dnode_lookup_path (
         ));
 
         if (remaining_path.len < 1) break;
-    } // for
+    }
 
     FSW_MSG_L03((
         FSW_MSG_STR(
@@ -924,20 +683,7 @@ errorexit:
     }
 
     return status;
-} // fsw_status_t fsw_dnode_lookup_path()
-
-/**
- * Get the next directory item in sequential order.
- * This function is called by the host driver to read the complete contents
- * of a directory in sequential (filesystem defined) order.
- * Calling this function returns the next entry. Iteration state is kept by
- * a shandle on the directory's dnode. The caller must set up the shandle
- * when starting the iteration.
- *
- * When the end of the directory is reached, the function returns FSW_NOT_FOUND.
- * If the function returns FSW_SUCCESS, *child_dno_out points to the next
- * directory entry. The caller must call fsw_dnode_release on it.
-**/
+}
 
 fsw_status_t fsw_dnode_dir_read (
     struct fsw_shandle  *shand,
@@ -990,22 +736,11 @@ fsw_status_t fsw_dnode_dir_read (
     return status;
 }
 
-/**
- * Read the target path of a symbolic link.
- * This function is called by the host driver to read the "content" of
- * a symbolic link, that is the relative or absolute path it points to.
- *
- * If the function returns FSW_SUCCESS, the string handle provided by the
- * caller is filled with a string in the host's preferred encoding.
- * The caller is responsible for calling fsw_strfree on the string.
-**/
-
 fsw_status_t fsw_dnode_readlink (
     struct fsw_dnode  *dno,
     struct fsw_string *target_name
 ) {
     fsw_status_t    status;
-
 
     status = fsw_dnode_fill (dno);
     if (status) {
@@ -1028,29 +763,10 @@ fsw_status_t fsw_dnode_readlink (
         return FSW_UNSUPPORTED;
     }
 
-    // CWE-20  [False Positive: Improper Input Validation]
-    //         'fsw_string' used intentionally for string-safe
-    //         operations. Type is struct and not raw C string
-    // CWE-362 [False Positive: TOCTOU Race Condition]
-    //         Executing in single-threaded UEFI context
-    //         Concurrent access not possible
-    /* Flawfinder: ignore */
     return dno->vol->fstype_table->readlink (
         dno->vol, dno, target_name
     );
 }
-
-/**
- * Read the target path of a symbolic link by accessing file data. This function
- * can be called by the filesystem driver if the filesystem stores the target
- * path as normal file data. This function will open an shandle, read the whole
- * content of the file into a buffer, and build a string from that. Currently
- * the encoding for the string is fixed as FSW_STRING_TYPE_ISO88591.
- *
- * If the function returns FSW_SUCCESS, the string handle provided by the caller
- * is filled with a string in the host's preferred encoding. The caller is
- * responsible for calling fsw_strfree on the string.
-**/
 
 fsw_status_t fsw_dnode_readlink_data (
     struct fsw_dnode  *dno,
@@ -1059,7 +775,6 @@ fsw_status_t fsw_dnode_readlink_data (
     fsw_status_t       status;
     fsw_u32            buffer_size;
     char               buffer[FSW_PATH_MAX];
-
 
     if (dno->size > FSW_PATH_MAX) {
         return FSW_VOLUME_CORRUPTED;
@@ -1077,7 +792,6 @@ fsw_status_t fsw_dnode_readlink_data (
     shand.extent.phys_start =    0;
     shand.extent.buffer     = NULL;
 
-    // Open shandle and read the data
     status = fsw_shandle_open (dno, &shand);
     if (status) return status;
 
@@ -1101,19 +815,6 @@ fsw_status_t fsw_dnode_readlink_data (
     return status;
 }
 
-/**
- * Resolve a symbolic link. This function can be called by the host driver to
- * make sure the a dnode is fully resolved instead of pointing at a symlink.
- * If the dnode passed in is not a symlink, it is returned unmodified.
- *
- * Note that absolute paths will be resolved relative to the root directory of
- * the volume. If the host is an operating system with its own VFS layer,
- * it should resolve symlinks on its own.
- *
- * If the function returns FSW_SUCCESS, *target_dno_out points at a dnode that is
- * not a symlink. The caller is responsible for calling fsw_dnode_release on it.
-**/
-
 fsw_status_t fsw_dnode_resolve (
     struct fsw_dnode  *dno,
     struct fsw_dnode **target_dno_out
@@ -1122,13 +823,12 @@ fsw_status_t fsw_dnode_resolve (
     struct fsw_string target_name;
     struct fsw_dnode *target_dno;
 
-    // Max Link Count for Linux Kernel is 40
     int link_count = 40;
 
     fsw_dnode_retain (dno);
 
     while (--link_count > 0) {
-        // Get full information
+
         status = fsw_dnode_fill(dno);
         if (status) {
             FSW_MSG_L03((
@@ -1141,13 +841,13 @@ fsw_status_t fsw_dnode_resolve (
         }
 
         if (dno->type != FSW_DNODE_TYPE_SYMLINK) {
-            // Return Non-symlink Target Found
+
             *target_dno_out = dno;
             return FSW_SUCCESS;
         }
 
         if (dno->parent == NULL) {
-            // Safety measure  ... Cannot happen in theory
+
             FSW_MSG_L01((
                 FSW_MSG_STR(
                     "FSW_CORE: fsw_dnode_resolve ... Leaving with Status: 'FSW_NOT_FOUND' (dno->parent==NULL)\n"
@@ -1164,12 +864,11 @@ fsw_status_t fsw_dnode_resolve (
             )
         ));
 
-        // Read Link Target
         status = fsw_dnode_readlink (
             dno, &target_name
         );
         if (!status) {
-            // Resolve Link Target
+
             status = fsw_dnode_lookup_path (
                 dno->parent,
                 &target_name, '/',
@@ -1195,9 +894,8 @@ fsw_status_t fsw_dnode_resolve (
             )
         ));
 
-        // Make 'target_dno' the new dno
         fsw_dnode_release (dno);
-        dno = target_dno;   // Already retained
+        dno = target_dno;
     }
 
     if (link_count == 0) {
@@ -1233,21 +931,6 @@ errorexit:
     return status;
 }
 
-/**
- * Set up a shandle (storage handle) to access a file's data. This function
- * is called by the host driver and by the core when they need to access a
- * file's data. It is also used in accessing the raw data of directories
- * and symlinks if the filesystem uses the same mechanisms for storing
- * the data of those items.
- *
- * The storage for the fsw_shandle structure is provided by the caller.
- * The dnode and pos fields may be accessed, pos may also be written to set
- * the file pointer. The file's data size is available as shand->dnode->size.
- *
- * If this function returns FSW_SUCCESS, the caller must call fsw_shandle_close
- * to release the dnode reference held by the shandle.
-**/
-
 fsw_status_t fsw_shandle_open (
     struct fsw_dnode   *dno,
     struct fsw_shandle *shand
@@ -1255,7 +938,6 @@ fsw_status_t fsw_shandle_open (
     fsw_status_t    status;
     struct fsw_volume *vol = dno->vol;
 
-    // Read full dnode information into memory
     status = vol->fstype_table->dnode_fill(vol, dno);
     if (status) {
         FSW_MSG_L01((
@@ -1267,7 +949,6 @@ fsw_status_t fsw_shandle_open (
         return status;
     }
 
-    // Setup shandle
     fsw_dnode_retain (dno);
 
     shand->dnode = dno;
@@ -1284,14 +965,6 @@ fsw_status_t fsw_shandle_open (
     return FSW_SUCCESS;
 }
 
-/**
- * Close a shandle after accessing the dnode's data. This function is called by
- * the host driver or core functions when they are finished with accessing
- * a file's data. It releases the dnode reference and frees any buffers
- * associated with the shandle itself. The dnode is only released
- * if this was the last reference using it.
-**/
-
 void fsw_shandle_close(
     struct fsw_shandle *shand
 ) {
@@ -1302,11 +975,6 @@ void fsw_shandle_close(
     }
     fsw_dnode_release (shand->dnode);
 }
-
-/**
- * Read data from a shandle (storage handle for a dnode). This function is
- * called by the host driver or internally when data is read from a file.
-**/
 
 fsw_status_t fsw_shandle_read (
     struct fsw_shandle *shand,
@@ -1326,15 +994,13 @@ fsw_status_t fsw_shandle_read (
     fsw_u32            cache_level;
     BOOLEAN            void_hole;
 
-
     if (shand->pos >= dno->size) {
-        // Already at EOF
+
         *buffer_size_inout = 0;
 
         return FSW_SUCCESS;
     }
 
-    // Initialize vars
     pos = shand->pos;
     buffer = buffer_in;
     remaining_file_data = dno->size - pos;
@@ -1343,8 +1009,6 @@ fsw_status_t fsw_shandle_read (
         dno->type != FSW_DNODE_TYPE_FILE
     ) ? 1 : 0;
 
-    // Amount requested by caller is 'buflen'.
-    // Only want to read to end of the file.
     buflen = *buffer_size_inout;
     if (buflen > remaining_file_data) {
         buflen = remaining_file_data;
@@ -1360,7 +1024,6 @@ fsw_status_t fsw_shandle_read (
             (unsigned long long) pos
         ));
 
-        // Get extent for current logical block
         log_bno = FSW_U64_DIV(pos, vol->log_blocksize);
         FSW_MSG_L03((
             FSW_MSG_STR(
@@ -1381,7 +1044,6 @@ fsw_status_t fsw_shandle_read (
                 FSW_DO_FREE(shand->extent.buffer);
             }
 
-            // Get extents from filesystem
             shand->extent.log_start = log_bno;
             status = vol->fstype_table->get_extent (
                 vol, dno, &shand->extent
@@ -1403,7 +1065,6 @@ fsw_status_t fsw_shandle_read (
                     return status;
                 }
 
-                // Got Sparse Hole
                 FSW_MSG_L01((
                     FSW_MSG_STR(
                         "FSW_CORE: fsw_shandle_read ... Located Sparse Hole at log_start==%llu\n"
@@ -1416,9 +1077,8 @@ fsw_status_t fsw_shandle_read (
             shand->extent.log_start * vol->log_blocksize
         );
 
-        // Dispatch by extent type
         if (shand->extent.type == FSW_EXTENT_TYPE_PHYSBLOCK) {
-            // Convert to physical block number and offset
+
             phys_bno = FSW_U64_DIV(
                 pos_in_extent,
                 vol->phys_blocksize
@@ -1437,7 +1097,6 @@ fsw_status_t fsw_shandle_read (
                 (unsigned long long) pos_in_physblock
             ));
 
-            // Get physical block
             status = fsw_block_get (
                 vol, phys_bno,
                 cache_level,
@@ -1453,7 +1112,6 @@ fsw_status_t fsw_shandle_read (
                 return status;
             }
 
-            // Copy data from physical block
             FSW_DO_MEMCPY(
                 buffer,
                 block_buffer + pos_in_physblock,
@@ -1465,7 +1123,7 @@ fsw_status_t fsw_shandle_read (
             );
         }
         else {
-            // FSW_EXTENT_TYPE_BUFFER/SPARSE/INVALID
+
             copylen = (
                 shand->extent.log_count * vol->log_blocksize
             ) - pos_in_extent;
@@ -1479,7 +1137,7 @@ fsw_status_t fsw_shandle_read (
                 );
             }
             else {
-                // FSW_EXTENT_TYPE_SPARSE/INVALID
+
                 FSW_DO_MEMZERO(buffer, copylen);
 
                 #if FSW_DEBUG_LEVEL >= 1
@@ -1523,7 +1181,7 @@ fsw_status_t fsw_shandle_read (
             ));
         }
         #endif
-    } // while
+    }
 
     *buffer_size_inout = (fsw_u32)(pos - shand->pos);
     shand->pos = pos;

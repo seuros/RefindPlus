@@ -1,31 +1,7 @@
-/*
- * From Grub2 for the BtrFS Driver
- */
-/*
- *  GRUB  --  GRand Unified Bootloader
- *  Copyright (C) 2008  Free Software Foundation, Inc.
- *
- *  GRUB is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  GRUB is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2021-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-** Portions Copyright (c) 2021 Joe van Tunen (joevt@shaw.ca)
-**
-** Modifications distributed under the preceding terms.
-**/
-
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2021-2026 Dayo Akanji
+// SPDX-FileCopyrightText: 2021 Joe van Tunen
 
 static uint32_t crc32c_table [256];
 
@@ -36,7 +12,6 @@ uint32_t reflect (
 ) {
     uint32_t result = 0;
     int i;
-
 
     for (i = 1; i <= len; i++) {
         if (ref & 1) {

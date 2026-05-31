@@ -38,7 +38,7 @@
  * - Source repository : https://github.com/Cyan4973/FiniteStateEntropy
  */
 /**
-** Modified for RefindPlus ... See RefindPlus Additions
+** Modified for Meridian ... See RefindPlus Additions
 ** Copyright (c) 2025 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.

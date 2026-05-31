@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
-# SPDX-FileCopyrightText: 2022-2026 Dayo Akanji
-# SPDX-FileCopyrightText: 2012-2023 Roderick W. Smith
 
 ## @file
 #
-# hfs.inf: Meridian's hfs filesystem driver. The shared fsw framework
+# bcachefs.inf: Meridian's bcachefs filesystem driver. The shared fsw framework
 # (core + EFI glue + utils) and all build options now live in
 # FswFrameworkLib.inf and MeridianPkg.dsc; this driver supplies only its own
 # source plus the fsw_active_fstype_table / _name bindings.
@@ -14,8 +12,8 @@
 
 [Defines]
     INF_VERSION               = 0x00010005
-    BASE_NAME                 = hfs
-    FILE_GUID                 = cc9ec9b9-d3e0-418e-bfa2-b8148f11ffb8
+    BASE_NAME                 = bcachefs
+    FILE_GUID                 = 75AA52A1-3A9F-4ECA-AB14-DCC30B6B0EB3
     MODULE_TYPE               = UEFI_DRIVER
     EDK_RELEASE_VERSION       = 0x00020000
     EFI_SPECIFICATION_VERSION = 0x00010000
@@ -27,7 +25,7 @@
 #
 
 [Sources]
-    fsw_hfs.c
+    fsw_bcachefs.c
 
 [Packages]
     MdePkg/MdePkg.dec

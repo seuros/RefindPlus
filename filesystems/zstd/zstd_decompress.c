@@ -14,7 +14,7 @@
  * ("BSD").
  */
 /**
-** Modified for RefindPlus ... Added FSE_MEMxyz calls
+** Modified for Meridian ... Added FSE_MEMxyz calls
 ** Copyright (c) 2026 Dayo Akanji (sf.net/u/dakanji/profile)
 **
 ** Modifications distributed under the preceding terms.
@@ -1442,7 +1442,7 @@ size_t ZSTD_findFrameCompressedSize(const void *src, size_t srcSize)
 
 			if (blockProperties.lastBlock)
 				break;
-		} // while {Infinite}
+		}
 
 		if (fParams.checksumFlag) { /* Frame content checksum */
 			if (remainingSize < 4)
@@ -1510,7 +1510,7 @@ static size_t ZSTD_decompressFrame(ZSTD_DCtx *dctx, void *dst, size_t dstCapacit
 		remainingSize -= cBlockSize;
 		if (blockProperties.lastBlock)
 			break;
-	} // while {Infinite}
+	}
 
 	if (dctx->fParams.checksumFlag) { /* Frame content checksum verification */
 		U32 const checkCalc = (U32)xxh64_digest(&dctx->xxhState);
@@ -2078,8 +2078,8 @@ size_t ZSTD_decompressStream(
             default: {
                 return ERROR(GENERIC); /* impossible */
             }
-        } // switch
-    } // while someMoreWork
+        }
+    }
 
 	/* result */
 	input->pos += (size_t)(ip - istart);

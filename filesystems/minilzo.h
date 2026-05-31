@@ -25,7 +25,7 @@
    http://www.oberhumer.com/opensource/lzo/
  */
 /**
- ** Modified for RefindPlus
+ ** Modified for Meridian
  ** Copyright (c) 2021 Dayo Akanji (sf.net/u/dakanji/profile)
  ** Portions Copyright (c) 2021 Joe van Tunen (joevt@shaw.ca)
  **
