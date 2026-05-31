@@ -1,22 +1,9 @@
-/*
- * include/version.h
- * Version number header file
- *
- * Copyright (c) 2017-2021 Roderick W. Smith
- *
- * Distributed under the terms of the GNU General Public License (GPL)
- * version 3 (GPLv3), a copy of which must be distributed with this
- * source code or binaries made from it.
- *
- */
-/*
- * Modified for RefindPlus
- * Copyright (c) 2020-2025 Dayo Akanji (sf.net/u/dakanji/profile)
- *
- * Modifications distributed under the preceding terms.
- */
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2025 Dayo Akanji
+// SPDX-FileCopyrightText: 2017-2021 Roderick W. Smith
 
 #define WIDE_STR2(x) L##x
 #define WIDE_STR(x) WIDE_STR2(x)
-#define VERSION_STRING_ASCII "0.14.2.AF_PRE-RELEASE"
-#define REFINDPLUS_VERSION WIDE_STR(VERSION_STRING_ASCII)
+#define VERSION_STRING_ASCII "2026.06.0-pre"
+#define MERIDIAN_VERSION WIDE_STR(VERSION_STRING_ASCII)
