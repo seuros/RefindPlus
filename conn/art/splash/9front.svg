@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- 9front: Glenda the bunny, round head with two long ears. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff">
+    <!-- ears -->
+    <ellipse cx="104" cy="64" rx="18" ry="52" transform="rotate(-12 104 64)"/>
+    <ellipse cx="152" cy="64" rx="18" ry="52" transform="rotate(12 152 64)"/>
+    <!-- head -->
+    <circle cx="128" cy="156" r="68"/>
+  </g>
+  <!-- eyes + nose (holes) -->
+  <g fill="#000">
+    <circle cx="106" cy="146" r="9"/>
+    <circle cx="150" cy="146" r="9"/>
+    <path d="M128 168 l12 10 h-24 z"/>
+  </g>
+</svg>

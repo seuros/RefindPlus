@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- GhostBSD: a classic ghost silhouette (rough first-pass; refine later). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff">
+    <!-- body: domed head over a wavy hem -->
+    <path d="M56 150
+             C56 92 92 52 128 52
+             C164 52 200 92 200 150
+             L200 200
+             L184 184 L168 200 L152 184 L136 200
+             L120 184 L104 200 L88 184 L72 200
+             L56 184 Z"/>
+  </g>
+  <!-- eyes + mouth (holes) -->
+  <g fill="#000">
+    <ellipse cx="106" cy="128" rx="12" ry="16"/>
+    <ellipse cx="150" cy="128" rx="12" ry="16"/>
+    <ellipse cx="128" cy="166" rx="10" ry="13"/>
+  </g>
+</svg>

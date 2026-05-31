@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- DragonFly BSD: a dragonfly, slim body, head, four wings. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff">
+    <!-- head + body -->
+    <circle cx="128" cy="52" r="18"/>
+    <path d="M120 70 h16 l-4 150 h-8 z"/>
+    <!-- wings -->
+    <ellipse cx="80"  cy="96"  rx="58" ry="16" transform="rotate(-18 80 96)"/>
+    <ellipse cx="176" cy="96"  rx="58" ry="16" transform="rotate(18 176 96)"/>
+    <ellipse cx="86"  cy="132" rx="48" ry="13" transform="rotate(-12 86 132)"/>
+    <ellipse cx="170" cy="132" rx="48" ry="13" transform="rotate(12 170 132)"/>
+  </g>
+</svg>

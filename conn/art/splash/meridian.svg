@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- Meridian fallback mark: a great-circle globe (ring + meridian + equator). -->
+<!-- Only the alpha channel is baked; fill colour is irrelevant (accent-tinted). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="none" stroke="#fff" stroke-width="13">
+    <circle cx="128" cy="128" r="94"/>
+    <ellipse cx="128" cy="128" rx="40" ry="94"/>
+    <line x1="34" y1="128" x2="222" y2="128"/>
+  </g>
+  <circle cx="128" cy="128" r="12" fill="#fff"/>
+</svg>

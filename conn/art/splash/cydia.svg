@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- Cydia: the codling moth's worm emerging from an apple. Right-to-repair
+     diagnostic; something got inside the apple to find the rot. Only the
+     alpha/shape matters (ConnLaunchSplash tints it with the entry accent). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff">
+    <!-- apple body: rounded, top dimple, gentle point at the base -->
+    <path d="M128 88
+             C112 64 78 60 60 84
+             C40 110 40 150 60 180
+             C78 205 100 215 118 205
+             C124 202 132 202 138 205
+             C156 215 178 205 196 180
+             C216 150 216 110 196 84
+             C178 60 144 64 128 88 Z"/>
+    <!-- stem -->
+    <path d="M124 84 C124 66 129 55 138 48 C143 57 141 71 132 82 Z"/>
+    <!-- leaf -->
+    <ellipse cx="154" cy="58" rx="23" ry="11" transform="rotate(-28 154 58)"/>
+  </g>
+  <!-- worm: a bold round-capped S-tube boring out of the apple's right side,
+       head free in the dark (an open curve, never looping back to the apple,
+       so it reads as a worm and not a handle) -->
+  <path fill="none" stroke="#fff" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"
+        d="M178 148 C208 156 214 118 240 122"/>
+  <!-- worm head, out in the dark to the upper right -->
+  <circle cx="242" cy="122" r="16" fill="#fff"/>
+</svg>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- Arch Linux: the mountain/'A' with the notched base. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <path fill="#fff" fill-rule="evenodd"
+        d="M128 32
+           L206 218
+           L150 184
+           C150 184 142 168 128 168
+           C114 168 106 184 106 184
+           L50 218
+           Z
+           M128 96
+           L96 172
+           C108 162 120 158 128 158
+           C136 158 148 162 160 172
+           Z"/>
+</svg>

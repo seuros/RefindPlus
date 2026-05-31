@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- FreeBSD: minimalist beastie head, round face with two horns. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff">
+    <!-- horns -->
+    <path d="M92 64 C70 44 66 24 70 18 C84 28 96 44 100 64 Z"/>
+    <path d="M164 64 C186 44 190 24 186 18 C172 28 160 44 156 64 Z"/>
+    <!-- head -->
+    <circle cx="128" cy="138" r="76"/>
+  </g>
+  <!-- eyes (holes) -->
+  <g fill="#000">
+    <circle cx="104" cy="126" r="11"/>
+    <circle cx="152" cy="126" r="11"/>
+  </g>
+  <!-- grin (hole) -->
+  <path d="M92 158 q36 40 72 0 q-36 18 -72 0z" fill="#000"/>
+</svg>

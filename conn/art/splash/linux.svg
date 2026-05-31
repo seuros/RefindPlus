@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- Linux generic: a stylised penguin silhouette. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff">
+    <!-- body -->
+    <path d="M128 36
+             c26 0 40 20 40 46
+             c0 12 -4 20 -4 30
+             c0 14 22 36 26 70
+             c3 24 -10 38 -62 38
+             c-52 0 -65 -14 -62 -38
+             c4 -34 26 -56 26 -70
+             c0 -10 -4 -18 -4 -30
+             c0 -26 14 -46 40 -46z"/>
+    <!-- feet -->
+    <ellipse cx="104" cy="216" rx="20" ry="9"/>
+    <ellipse cx="152" cy="216" rx="20" ry="9"/>
+  </g>
+  <!-- eyes + beak as holes (drawn in background colour; baked alpha keeps them dark) -->
+  <g fill="#000">
+    <circle cx="116" cy="78" r="7"/>
+    <circle cx="140" cy="78" r="7"/>
+  </g>
+  <path d="M120 92 l8 14 l8 -14 z" fill="#000"/>
+</svg>
