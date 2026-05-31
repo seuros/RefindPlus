@@ -1,21 +1,13 @@
-/*
- * Copyright 2012 <James.Bottomley@HansenPartnership.com>
- *
- * see COPYING file
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2024-2025 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2024-2025 Dayo Akanji
+// SPDX-FileCopyrightText: 2012 James Bottomley <James.Bottomley@HansenPartnership.com>
+// SPDX-FileCopyrightText: Matthew J. Garrett
 
 #include <global.h>
-#include "../BootMaster/mystrings.h"
-#include "../include/refit_call_wrapper.h"
+#include "mystrings.h"
 
 #include "simple_file.h"
-//#include "execute.h"    /* for generate_path() */
 
 static EFI_GUID IMAGE_PROTOCOL     = LOADED_IMAGE_PROTOCOL;
 static EFI_GUID SIMPLE_FS_PROTOCOL = SIMPLE_FILE_SYSTEM_PROTOCOL;
@@ -31,30 +23,26 @@ EFI_STATUS simple_file_open_by_handle (
    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *drive;
    EFI_FILE_PROTOCOL               *root;
 
-   Status = uefi_call_wrapper(gBS->HandleProtocol, 3, Device,
-                   &SIMPLE_FS_PROTOCOL, (VOID **) &drive);
+   Status = gBS->HandleProtocol(Device, &SIMPLE_FS_PROTOCOL, (VOID **) &drive);
 
    if (Status != EFI_SUCCESS) {
       Print (L"Unable to find simple file protocol\n");
       goto error;
    }
 
-   Status = uefi_call_wrapper(drive->OpenVolume, 2, drive, &root);
+   Status = drive->OpenVolume(drive, &root);
 
    if (Status != EFI_SUCCESS) {
       Print (L"Failed to open drive volume\n");
       goto error;
    }
 
-   Status = uefi_call_wrapper(root->Open, 5, root, file, NameStr,
-                   mode, 0);
+   Status = root->Open(root, file, NameStr, mode, 0);
 
  error:
    return Status;
 }
 
-// generate_path() from shim by Matthew J. Garrett
-// Modified for RefindPlus by Dayo Akanji
 static
 EFI_STATUS generate_path (
     CHAR16                     *NameStr,
@@ -68,14 +56,12 @@ EFI_STATUS generate_path (
     CHAR16     *FoundStr;
     CHAR16     *DevPathStr;
 
-
     FoundStr = NULL;
     DevPathStr = DevicePathToStr (LoadedImage->FilePath);
     if (DevPathStr == NULL) {
         return EFI_OUT_OF_RESOURCES;
     }
 
-    // Normalise and find last backslash
     for (i = 0; i < StrLen (DevPathStr); i++) {
         if (DevPathStr[i] == '/') {
             DevPathStr[i] = '\\';
@@ -83,7 +69,7 @@ EFI_STATUS generate_path (
         if (DevPathStr[i] == '\\') {
             FoundStr = &DevPathStr[i];
         }
-    } // for
+    }
 
     if (FoundStr == NULL) {
         PathLen = 0;
@@ -97,11 +83,10 @@ EFI_STATUS generate_path (
     }
 
     if (NameStr[0] != L'\\') {
-        // Moved by 1 for extra backslash
+
         PathLen++;
     }
 
-    // Added 1 for null terminator
     DestSize  = StrLen (NameStr) + PathLen + 1;
     *PathName = AllocatePool (sizeof (CHAR16) * DestSize);
     if (*PathName == NULL) {
@@ -111,7 +96,6 @@ EFI_STATUS generate_path (
         return EFI_OUT_OF_RESOURCES;
     }
 
-    // Terminate before appending
     (*PathName)[0] = L'\0';
 
     if (PathLen > 0) {
@@ -128,7 +112,7 @@ EFI_STATUS generate_path (
     FreePool (DevPathStr);
 
     return EFI_SUCCESS;
-} // static EFI_STATUS generate_path()
+}
 
 EFI_STATUS simple_file_open (
     EFI_HANDLE          image,
@@ -142,10 +126,7 @@ EFI_STATUS simple_file_open (
    EFI_DEVICE_PATH_PROTOCOL  *LoadPath;
    CHAR16                    *PathName;
 
-   Status = uefi_call_wrapper(
-       gBS->HandleProtocol, 3, image,
-       &IMAGE_PROTOCOL, (VOID **) &LoadedImage
-   );
+   Status = gBS->HandleProtocol(image, &IMAGE_PROTOCOL, (VOID **) &LoadedImage);
 
    if (Status != EFI_SUCCESS) {
        return simple_file_open_by_handle (image, NameStr, file, mode);
@@ -182,10 +163,7 @@ EFI_STATUS simple_file_read_all (
    *size = sizeof (buf);
    fi = (void *)buf;
 
-
-   Status = uefi_call_wrapper(
-       file->GetInfo, 4, file, &FILE_INFO, size, fi
-   );
+   Status = file->GetInfo(file, &FILE_INFO, size, fi);
    if (Status != EFI_SUCCESS) {
       Print(L"Failed to get file info\n");
       return Status;
@@ -198,7 +176,7 @@ EFI_STATUS simple_file_read_all (
       Print(L"Failed to allocate buffer of size %d\n", *size);
       return EFI_OUT_OF_RESOURCES;
    }
-   Status = uefi_call_wrapper(file->Read, 3, file, size, *buffer);
+   Status = file->Read(file, size, *buffer);
 
    return Status;
 }
@@ -206,5 +184,5 @@ EFI_STATUS simple_file_read_all (
 VOID simple_file_close (
     EFI_FILE_PROTOCOL *file
 ) {
-   uefi_call_wrapper(file->Close, 1, file);
+   file->Close(file);
 }

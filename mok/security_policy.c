@@ -1,30 +1,17 @@
-/*
- * Copyright 2012 <James.Bottomley@HansenPartnership.com>
- *
- * see COPYING file
- *
- * Install and remove a platform security2 override policy
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2024-2025 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2024-2025 Dayo Akanji
+// SPDX-FileCopyrightText: 2012 James Bottomley <James.Bottomley@HansenPartnership.com>
 
 #include <global.h>
 
 #include "mok.h"
 #include "guid.h"
 #include "simple_file.h"
-#include "../BootMaster/lib.h"
-#include "../include/refit_call_wrapper.h"
+#include "lib.h"
 
 #include <security_policy.h>
 
-/*
- * See the UEFI Platform Initialization manual (Vol2: DXE) for this
- */
 struct _EFI_SECURITY2_PROTOCOL;
 struct _EFI_SECURITY_PROTOCOL;
 struct _EFI_DEVICE_PATH_PROTOCOL;
@@ -58,16 +45,9 @@ struct _EFI_SECURITY_PROTOCOL {
     EFI_SECURITY_FILE_AUTHENTICATION_STATE  FileAuthenticationState;
 };
 
-
 static EFI_SECURITY_FILE_AUTHENTICATION_STATE esfas = NULL;
 static EFI_SECURITY2_FILE_AUTHENTICATION es2fa = NULL;
 
-// Perform shim/MOK and Secure Boot authentication on a binary that is already been
-// loaded into memory. This function does the platform SB authentication first
-// but preserves its return value in case of its failure, so that it can be
-// returned in case of a shim/MOK authentication failure. This is done because
-// the SB failure code seems to vary from one implementation to another, and I
-// do not want to interfere with that at this time.
 static
 MSABI EFI_STATUS security2_policy_authentication (
     const EFI_SECURITY2_PROTOCOL *This,
@@ -78,13 +58,8 @@ MSABI EFI_STATUS security2_policy_authentication (
 ) {
     EFI_STATUS Status;
 
-    /* Chain original security policy */
-    Status = uefi_call_wrapper(
-        es2fa, 5, This, DevicePath,
-        FileBuffer, FileSize, BootPolicy
-    );
+    Status = es2fa(This, DevicePath, FileBuffer, FileSize, BootPolicy);
 
-    /* if OK, do not bother with MOK check */
     if (!EFI_ERROR(Status)) {
         return Status;
     }
@@ -94,15 +69,8 @@ MSABI EFI_STATUS security2_policy_authentication (
     }
 
     return Status;
-} // EFI_STATUS security2_policy_authentication()
+}
 
-// Perform both shim/MOK and platform Secure Boot authentication. This function loads
-// the file and performs shim/MOK authentication first simply to avoid double loads
-// of Linux kernels, which are much more likely to be shim/MOK-signed than platform-signed,
-// since kernels are big and can take several seconds to load on some computers and
-// filesystems. This also has the effect of returning whatever the platform code is for
-// authentication failure, be it EFI_ACCESS_DENIED, EFI_SECURITY_VIOLATION, or something
-// else. (This seems to vary between implementations.)
 static
 MSABI EFI_STATUS security_policy_authentication (
     const EFI_SECURITY_PROTOCOL *This,
@@ -126,18 +94,15 @@ MSABI EFI_STATUS security_policy_authentication (
         (EFI_DEVICE_PATH_PROTOCOL *) DevicePathConst
     );
 
-    Status = REFIT_CALL_3_WRAPPER(
-        gBS->LocateDevicePath, &SIMPLE_FS_PROTOCOL,
-        &DevPath, &h
-    );
+    Status = gBS->LocateDevicePath(&SIMPLE_FS_PROTOCOL, &DevPath, &h);
     if (EFI_ERROR(Status)) {
         goto out;
     }
 
     DevPathStr = DevicePathToStr(DevPath);
 
-    Status = simple_file_open_by_handle(h, DevPathStr, &f, RefitReadOnly);
-    MY_FREE_POOL(DevPathStr);
+    Status = simple_file_open_by_handle(h, DevPathStr, &f, MeridianReadOnly);
+    MRD_FREE_POOL(DevPathStr);
     if (EFI_ERROR(Status)) {
         goto out;
     }
@@ -151,18 +116,15 @@ MSABI EFI_STATUS security_policy_authentication (
         Status = EFI_SUCCESS;
     }
     else {
-        // Try using the platform's native policy.
-        Status = uefi_call_wrapper(
-            esfas, 3, This,
-            AuthenticationStatus, DevicePathConst
-        );
+
+        Status = esfas(This, AuthenticationStatus, DevicePathConst);
     }
     FreePool(FileBuffer);
 
     out:
-    MY_FREE_POOL(OrigDevPath);
+    MRD_FREE_POOL(OrigDevPath);
     return Status;
-} // EFI_STATUS security_policy_authentication()
+}
 
 EFI_STATUS security_policy_install(void) {
     EFI_SECURITY_PROTOCOL *security_protocol;
@@ -170,26 +132,15 @@ EFI_STATUS security_policy_install(void) {
     EFI_STATUS status;
 
     if (esfas) {
-        /* Already Installed */
+
         return EFI_ALREADY_STARTED;
     }
 
-    /* Do not bother with status here.  The call is allowed
-    * to fail, since SECURITY2 was introduced in PI 1.2.1
-    * If it fails, use security2_protocol == NULL as indicator */
-    uefi_call_wrapper(
-        gBS->LocateProtocol, 3,
-        &SECURITY2_PROTOCOL_GUID, NULL,
-        (VOID **) &security2_protocol
-    );
+    gBS->LocateProtocol(&SECURITY2_PROTOCOL_GUID, NULL, (VOID **) &security2_protocol);
 
-    status = uefi_call_wrapper(
-        gBS->LocateProtocol, 3,
-        &SECURITY_PROTOCOL_GUID, NULL,
-        (VOID **) &security_protocol
-    );
+    status = gBS->LocateProtocol(&SECURITY_PROTOCOL_GUID, NULL, (VOID **) &security_protocol);
     if (status != EFI_SUCCESS)
-    /* This one is mandatory, so there is a serious problem */
+
     return status;
 
     if (security2_protocol) {
@@ -209,11 +160,7 @@ EFI_STATUS security_policy_uninstall(void) {
     if (esfas) {
         EFI_SECURITY_PROTOCOL *security_protocol;
 
-        status = uefi_call_wrapper(
-            gBS->LocateProtocol, 3,
-            &SECURITY_PROTOCOL_GUID, NULL,
-            (VOID **) &security_protocol
-        );
+        status = gBS->LocateProtocol(&SECURITY_PROTOCOL_GUID, NULL, (VOID **) &security_protocol);
 
         if (status != EFI_SUCCESS) {
             return status;
@@ -223,18 +170,14 @@ EFI_STATUS security_policy_uninstall(void) {
         esfas = NULL;
     }
     else {
-        /* nothing installed */
+
         return EFI_NOT_STARTED;
     }
 
     if (es2fa) {
         EFI_SECURITY2_PROTOCOL *security2_protocol;
 
-        status = uefi_call_wrapper(
-            gBS->LocateProtocol, 3,
-            &SECURITY2_PROTOCOL_GUID, NULL,
-            (VOID **) &security2_protocol
-        );
+        status = gBS->LocateProtocol(&SECURITY2_PROTOCOL_GUID, NULL, (VOID **) &security2_protocol);
 
         if (status != EFI_SUCCESS) {
             return status;

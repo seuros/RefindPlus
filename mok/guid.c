@@ -1,13 +1,10 @@
-/*
- * Copyright 2012 <James.Bottomley@HansenPartnership.com>
- *
- * see COPYING file
- */
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2012 James Bottomley <James.Bottomley@HansenPartnership.com>
 
 #include "global.h"
 #include "guid.h"
 
-/* all the necessary guids */
 EFI_GUID GV_GUID            = EFI_GLOBAL_VARIABLE;
 EFI_GUID IMAGE_PROTOCOL     = LOADED_IMAGE_PROTOCOL;
 EFI_GUID SIMPLE_FS_PROTOCOL = SIMPLE_FILE_SYSTEM_PROTOCOL;

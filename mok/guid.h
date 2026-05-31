@@ -1,9 +1,6 @@
-//#include <efi.h>
-
-// #ifndef BUILD_EFI
-// const char *guid_to_str(EFI_GUID *guid);
-// void str_to_guid(const char *str, EFI_GUID *guid);
-// #endif
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2012 James Bottomley <James.Bottomley@HansenPartnership.com>
 
 extern EFI_GUID SIG_DB;
 extern EFI_GUID GV_GUID;
