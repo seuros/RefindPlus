@@ -1,0 +1,43 @@
+## @file
+#  MeridianSnpDiscover -- native UEFI PXE/SNP boot-server discovery.
+#
+#  Drop-in replacement for ipxe_discover.efi that uses only standard UEFI
+#  protocols (EFI_PXE_BASE_CODE_PROTOCOL + EFI_SIMPLE_NETWORK_PROTOCOL).
+#  No iPXE build dependency.  Output format is identical so that
+#  remote/netboot.c::RuniPXEDiscover() can consume either binary.
+#
+#  Deploy as:  \EFI\Meridian\remote\ipxe_discover.efi
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = MeridianSnpDiscover
+    FILE_GUID      = 7A3F91CC-4B8D-4E2A-B5D0-1C6E0F2A3D74
+    MODULE_TYPE    = UEFI_APPLICATION
+    VERSION_STRING = 1.0
+    ENTRY_POINT    = UefiMain
+
+[Sources]
+    snp_discover.c
+    snp_intrinsics.c    # weak memset/memcpy -- clang lowers ZeroMem/CopyMem clears to libc symbols
+
+[Packages]
+    MdePkg/MdePkg.dec
+    MdeModulePkg/MdeModulePkg.dec
+    MeridianPkg/MeridianPkg.dec
+
+[LibraryClasses]
+    UefiApplicationEntryPoint
+    UefiLib
+    UefiBootServicesTableLib
+    BaseLib
+    BaseMemoryLib
+    MemoryAllocationLib
+    PrintLib
+
+[Protocols]
+    gEfiPxeBaseCodeProtocolGuid          ## CONSUMES
+    gEfiSimpleNetworkProtocolGuid        ## CONSUMES
