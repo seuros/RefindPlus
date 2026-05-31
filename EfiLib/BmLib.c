@@ -1,63 +1,24 @@
-/** @file
-  Utility routines used by boot maintenance modules.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2026 Dayo Akanji
+// SPDX-FileCopyrightText: Intel Corporation
 
-Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
-This program and the accompanying materials
-are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
-
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-**/
-/**
-** Modified for RefindPlus
-** Copyright (c) 2020-2026 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** Modifications distributed under the preceding terms.
-**/
-
-#ifdef __MAKEWITH_TIANO
 #include "Platform.h"
-#else
-#include "gnuefi-helper.h"
-#endif
+#include <Library/FileHandleLib.h>
 
-#include "../BootMaster/rp_funcs.h"
-#include "../include/refit_call_wrapper.h"
+#include "meridian_funcs.h"
 
-/**
-  Find the first instance of this Protocol
-  in the system and return its interface.
-
-  @param ProtocolGuid    Provides the protocol to search for
-  @param Interface       On return, a pointer to the first interface
-                         that matches ProtocolGuid
-
-  @retval  EFI_SUCCESS   A protocol instance matching ProtocolGuid was found
-  @retval  EFI_NOT_FOUND No protocol instances were found that match ProtocolGuid
-**/
 EFI_STATUS EfiLibLocateProtocol (
     IN  EFI_GUID  *ProtocolGuid,
     OUT VOID     **Interface
 ) {
     EFI_STATUS  Status;
 
-    Status = REFIT_CALL_3_WRAPPER(
-        gBS->LocateProtocol, ProtocolGuid,
-        NULL, (VOID **) Interface
-    );
+    Status = gBS->LocateProtocol(ProtocolGuid, NULL, (VOID **) Interface);
 
     return Status;
-} // EFI_STATUS EfiLibLocateProtocol()
+}
 
-/**
-  Function opens and returns a file handle to the root directory of a volume.
-
-  @param DeviceHandle    A handle for a device
-
-  @return A valid file handle or NULL is returned
-**/
 EFI_FILE_HANDLE EfiLibOpenRoot (
     IN EFI_HANDLE DeviceHandle
 ) {
@@ -65,97 +26,42 @@ EFI_FILE_HANDLE EfiLibOpenRoot (
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Volume;
     EFI_FILE_HANDLE                  File;
 
-
-    // Open Filesystem Interface
-    Status = REFIT_CALL_3_WRAPPER(
-        gBS->HandleProtocol, DeviceHandle,
-        &gEfiSimpleFileSystemProtocolGuid, (VOID **) &Volume
-    );
+    Status = gBS->HandleProtocol(DeviceHandle, &gEfiSimpleFileSystemProtocolGuid, (VOID **) &Volume);
     if (EFI_ERROR(Status)) {
         return NULL;
     }
 
-    // Open Volume Root Directory
     File = NULL;
-    Status = REFIT_CALL_2_WRAPPER(
-        Volume->OpenVolume,
-        Volume, &File
-    );
+    Status = Volume->OpenVolume(Volume, &File);
     if (EFI_ERROR(Status)) {
-        #if REFIT_DEBUG > 0
+        #if MERIDIAN_DEBUG > 0
         CheckError (
             Status,
-            L"in RefindPlus:- 'File Handle to Root Directory'"
+            L"in Meridian:- 'File Handle to Root Directory'"
         );
         #endif
 
         return NULL;
     }
 
-    // Done
     return File;
-} // EFI_FILE_HANDLE EfiLibOpenRoot()
+}
 
-/**
-  Duplicate a string.
-
-  @param Src             The source.
-
-  @return A new string which is duplicated copy of the source.
-  @retval NULL If there is not enough memory.
-**/
 CHAR16 * EfiStrDuplicate (
     IN CHAR16   *Src
 ) {
-    CHAR16 *Dest;
-    UINTN   Size;
-
-    // Do Not Deference NULL Pointers
     if (Src == NULL) {
         return NULL;
     }
 
-    Size = StrSize (Src); // At Least 2 Bytes
-    Dest = AllocateZeroPool (Size);
-    if (Dest != NULL) {
-        REFIT_CALL_3_WRAPPER(
-            gBS->CopyMem, Dest,
-            Src, Size
-        );
-    }
+    return AllocateCopyPool (StrSize (Src), Src);
+}
 
-    return Dest;
-} // CHAR16 * EfiStrDuplicate()
-
-/**
-  Function gets the file information from an open file descriptor, and stores it
-  in a buffer allocated from pool.
-
-  @param FHand           File Handle.
-
-  @return                A pointer to a buffer with file information or NULL is returned
-**/
 EFI_FILE_INFO * EfiLibFileInfo (
     IN EFI_FILE_HANDLE      FHand
 ) {
-    EFI_STATUS     Status;
-    EFI_FILE_INFO *FileInfo = NULL;
-    UINTN          Size     = 0;
-
-    Status = FHand->GetInfo (
-        FHand, &gEfiFileInfoGuid,
-        &Size, FileInfo
-    );
-    if (Status == EFI_BUFFER_TOO_SMALL) {
-        FileInfo = AllocateZeroPool (Size);
-        Status = FHand->GetInfo (
-            FHand, &gEfiFileInfoGuid,
-            &Size, FileInfo
-        );
-    }
-
-    return EFI_ERROR(Status) ? NULL : FileInfo;
-} // EFI_FILE_INFO * EfiLibFileInfo()
+    return FileHandleGetInfo (FHand);
+}
 
 EFI_FILE_SYSTEM_INFO * EfiLibFileSystemInfo (
     IN EFI_FILE_HANDLE      FHand
@@ -177,18 +83,8 @@ EFI_FILE_SYSTEM_INFO * EfiLibFileSystemInfo (
     }
 
     return EFI_ERROR(Status) ? NULL : FileSystemInfo;
-} // EFI_FILE_SYSTEM_INFO * EfiLibFileSystemInfo()
+}
 
-/**
-  Adjusts the size of a previously allocated buffer.
-
-  @param OldPool         - A pointer to the buffer whose size is being adjusted.
-  @param OldSize         - The size of the current buffer.
-  @param NewSize         - The size of the new buffer.
-
-  @return   The newly allocated buffer.
-  @retval   NULL  Allocation failed.
-**/
 VOID * EfiReallocatePool (
     IN VOID  *OldPool,
     IN UINTN  OldSize,
@@ -203,14 +99,11 @@ VOID * EfiReallocatePool (
 
     if (OldPool != NULL) {
         if (NewPool != NULL) {
-            REFIT_CALL_3_WRAPPER(
-                gBS->CopyMem, NewPool,
-                OldPool, OldSize < NewSize ? OldSize : NewSize
-            );
+            gBS->CopyMem(NewPool, OldPool, OldSize < NewSize ? OldSize : NewSize);
         }
 
-        MY_FREE_POOL(OldPool);
+        MRD_FREE_POOL(OldPool);
     }
 
     return NewPool;
-} // VOID * EfiReallocatePool()
+}

@@ -1,26 +1,10 @@
-/*
-Headers collection for procedures
-*/
-/**
- * Copyright (c) 2004 - 2008, Intel Corporation. All rights reserved.<BR>
- * This program and the accompanying materials
- * are licensed and made available under the terms and conditions of the BSD License
- * which accompanies this distribution.  The full text of the license may be found at
- * http://opensource.org/licenses/bsd-license.php
- *
- * THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
- * WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-**/
-/**
- * Modified for RefindPlus
- * Copyright (c) 2020-2021 Dayo Akanji (sf.net/u/dakanji/profile)
- *
- * Modifications distributed under the preceding terms.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2021 Dayo Akanji
+// SPDX-FileCopyrightText: Intel Corporation
 
-#ifndef __REFIT_PLATFORM_H__
-#define __REFIT_PLATFORM_H__
-
+#ifndef __MERIDIAN_PLATFORM_H__
+#define __MERIDIAN_PLATFORM_H__
 
 #include <Uefi.h>
 
@@ -44,26 +28,20 @@ Headers collection for procedures
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiRuntimeLib.h>
 
-#include <Framework/FrameworkInternalFormRepresentation.h>
-
 #include <IndustryStandard/Acpi10.h>
 #include <IndustryStandard/Acpi20.h>
 
 #include <Protocol/Cpu.h>
-#include <Protocol/CpuIo.h>
-#include <Protocol/DataHub.h>
 #include <Protocol/Decompress.h>
 #include <Protocol/DevicePathToText.h>
-#include <Protocol/FrameworkHii.h>
 #include <Protocol/Smbios.h>
 #include <Protocol/VariableWrite.h>
 #include <Protocol/Variable.h>
 
-#include "../include/Bmp.h"
-#include "../libeg/efiConsoleControl.h"
-#include "../EfiLib/GenericBdsLib.h"
+#include "display.h"
+#include "GenericBdsLib.h"
 
-#include "../BootMaster/global.h"
+#include "global.h"
 
 #define EFI_HANDLE_TYPE_UNKNOWN                     0x000
 #define EFI_HANDLE_TYPE_IMAGE_HANDLE                0x001

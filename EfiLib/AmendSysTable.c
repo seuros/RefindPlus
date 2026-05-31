@@ -1,37 +1,17 @@
-/** @file
- * AmendSysTable.c
- * Amends the SystemTable to provide CreateEventEx and a UEFI 2.3 Revision Number
- *
- * Copyright (c) 2020-2025 Dayo Akanji (sf.net/u/dakanji/profile)
- * Portions Copyright (c) 2020 Joe van Tunen (joevt@shaw.ca)
- * Portions Copyright (c) 2004-2008 The Intel Corporation
- *
- * THIS PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
- * WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2025 Dayo Akanji
+// SPDX-FileCopyrightText: 2021 Joe van Tunen
+// SPDX-FileCopyrightText: Intel Corporation
 
 EFI_STATUS AmendSysTable (VOID);
 
-// Check Compile Type - START
-#ifndef __MAKEWITH_TIANO // Compile Type = OTHER/GNU_EFI
-
-/**
-  @retval EFI_INCOMPATIBLE_VERSION  Not running on compatible TianoCore compiled version
-**/
-EFI_STATUS AmendSysTable (VOID) {
-    // Exit *IF NOT* compiled with EDK II
-    return EFI_INCOMPATIBLE_VERSION;
-}
-
-#else // Compile Type = TIANOCORE
-
-#include "../BootMaster/global.h"
-#include "../BootMaster/rp_funcs.h"
-#include "../include/refit_call_wrapper.h"
-#include "../../MdeModulePkg/Core/Dxe/DxeMain.h"
-#include "../../MdeModulePkg/Core/Dxe/Event/Event.h"
-
-extern BOOLEAN egInitUGADraw (BOOLEAN LogOutput);
+#include "global.h"
+#include "display.h"
+#include "meridian_funcs.h"
+#include <Protocol/Runtime.h>
+#include <Protocol/SmmBase2.h>
+#include <Core/Dxe/Event/Event.h>
 
 BOOLEAN SetSysTab = FALSE;
 
@@ -82,10 +62,6 @@ EFI_STATUS EFIAPI OurCreateEventEx (
     EFI_EVENT         *Event
 );
 
-/**
-  Set Interrupt State.
-  @param Enable: The state of enable or disable interrupt
-**/
 VOID OurSetInterruptState (
     IN BOOLEAN  Enable
 ) {
@@ -110,12 +86,8 @@ VOID OurSetInterruptState (
     if (!EFI_ERROR(Status) && !InSmm) {
         zCpu->EnableInterrupt (zCpu);
     }
-} // VOID OurSetInterruptState()
+}
 
-/**
-  Dispatches pending events.
-  @param Priority: Task priority level of event notifications to dispatch
-**/
 VOID OurDispatchEventNotifies (
     IN EFI_TPL  Priority
 ) {
@@ -126,45 +98,28 @@ VOID OurDispatchEventNotifies (
     ASSERT (zEventQueueLock.OwnerTpl == Priority);
     Head = &zEventQueue[Priority];
 
-    // Dispatch pending notifications
     while (!IsListEmpty (Head)) {
-        Event = REFIT_CALL_4_WRAPPER(
-            CR, Head->ForwardLink,
-            IEVENT, NotifyLink, EVENT_SIGNATURE
-        );
-        REFIT_CALL_1_WRAPPER(RemoveEntryList, &Event->NotifyLink);
+        Event = CR(Head->ForwardLink, IEVENT, NotifyLink, EVENT_SIGNATURE);
+        RemoveEntryList(&Event->NotifyLink);
         Event->NotifyLink.ForwardLink = NULL;
 
-        // Only clear the SIGNAL status if it is a SIGNAL type event.
-        // WAIT type events are only cleared in CheckEvent()
         if ((Event->Type & EVT_NOTIFY_SIGNAL) != 0) {
             Event->SignalCount = 0;
         }
 
         OurReleaseLock (&zEventQueueLock);
 
-        // Notify this event
         ASSERT (Event->NotifyFunction != NULL);
 
-        REFIT_CALL_2_WRAPPER(
-            Event->NotifyFunction,
-            Event, Event->NotifyContext
-        );
+        Event->NotifyFunction(Event, Event->NotifyContext);
 
-        // Check for next pending event
         OurAcquireLock (&zEventQueueLock);
-    } // while
+    }
 
     zEventPending &= ~((UINTN) (1) << Priority);
     OurReleaseLock (&zEventQueueLock);
-} // VOID OurDispatchEventNotifies()
+}
 
-/**
-  Raise the task priority level to the new level.
-  High level is implemented by disabling processor interrupts.
-  @param  NewTpl:  New task priority level
-  @return The previous task priority level
-**/
 EFI_TPL EFIAPI OurRaiseTpl (
     IN EFI_TPL  NewTpl
 ) {
@@ -172,35 +127,28 @@ EFI_TPL EFIAPI OurRaiseTpl (
 
     OldTpl = zEfiCurrentTpl;
     if (OldTpl > NewTpl) {
-        #if REFIT_DEBUG > 0
-        LOG_MSG(
+        #if MERIDIAN_DEBUG > 0
+        INFO_LOG(
             "FATAL ERROR: RaiseTpl with OldTpl (0x%x) > NewTpl (0x%x)",
             OldTpl,
             NewTpl
         );
-        LOG_MSG("\n\n");
+        INFO_LOG("\n\n");
         #endif
 
         ASSERT (FALSE);
     }
     ASSERT (VALID_TPL (NewTpl));
 
-    // Disable interrupts if raising to high level
     if (NewTpl >= TPL_HIGH_LEVEL  &&  OldTpl < TPL_HIGH_LEVEL) {
         OurSetInterruptState (FALSE);
     }
 
-    // Set the new value
     zEfiCurrentTpl = NewTpl;
 
     return OldTpl;
-} // EFI_TPL EFIAPI OurRaiseTpl()
+}
 
-/**
-  Lowers the task priority to the previous value.   If the new
-  priority unmasks events at a higher priority, they are dispatched.
-  @param  NewTpl:  New, lower, task priority
-**/
 VOID EFIAPI OurRestoreTpl (
     IN EFI_TPL NewTpl
 ) {
@@ -209,25 +157,23 @@ VOID EFIAPI OurRestoreTpl (
 
     OldTpl = zEfiCurrentTpl;
     if (NewTpl > OldTpl) {
-        #if REFIT_DEBUG > 0
-        LOG_MSG(
+        #if MERIDIAN_DEBUG > 0
+        INFO_LOG(
             "FATAL ERROR: RestoreTpl with NewTpl (0x%x) > OldTpl (0x%x)",
             NewTpl,
             OldTpl
         );
-        LOG_MSG("\n");
+        INFO_LOG("\n");
         #endif
 
         ASSERT (FALSE);
     }
     ASSERT (VALID_TPL (NewTpl));
 
-    // Ensure interrupts are enabled if lowering below HIGH_LEVEL
     if (OldTpl >= TPL_HIGH_LEVEL  &&  NewTpl < TPL_HIGH_LEVEL) {
         zEfiCurrentTpl = TPL_HIGH_LEVEL;
     }
 
-    // Dispatch pending events
     while (zEventPending != 0) {
         PendingTpl = (UINTN) HighBitSet64 (zEventPending);
         if (PendingTpl <= NewTpl) {
@@ -239,23 +185,15 @@ VOID EFIAPI OurRestoreTpl (
             OurSetInterruptState (TRUE);
         }
         OurDispatchEventNotifies (zEfiCurrentTpl);
-    } // while
+    }
 
-    // Set new value
     zEfiCurrentTpl = NewTpl;
 
-    // Ensure interrupts are enabled if lowering below HIGH_LEVEL
     if (zEfiCurrentTpl < TPL_HIGH_LEVEL) {
         OurSetInterruptState (TRUE);
     }
-} // VOID EFIAPI OurRestoreTpl()
+}
 
-/**
-  Raising to the task priority level of the mutual exclusion
-  lock, and then acquires ownership of the lock.
-  @param  Lock:  The lock to acquire
-  @return Lock owned
-**/
 VOID OurAcquireLock (
     IN EFI_LOCK  *Lock
 ) {
@@ -264,14 +202,8 @@ VOID OurAcquireLock (
 
     Lock->OwnerTpl = OurRaiseTpl (Lock->Tpl);
     Lock->Lock     = EfiLockAcquired;
-} // VOID OurAcquireLock()
+}
 
-/**
-  Releases ownership of the mutual exclusion lock, and
-  restores the previous task priority level.
-  @param  Lock:  The lock to release
-  @return Lock unowned
-**/
 VOID OurReleaseLock (
     IN EFI_LOCK  *Lock
 ) {
@@ -284,8 +216,7 @@ VOID OurReleaseLock (
     Lock->Lock = EfiLockReleased;
 
     OurRestoreTpl (Tpl);
-} // VOID OurReleaseLock()
-
+}
 
 EFI_STATUS EFIAPI OurCreateEventEx (
     IN        UINT32             Type,
@@ -299,8 +230,6 @@ EFI_STATUS EFIAPI OurCreateEventEx (
     IEVENT            *IEvent;
     INTN               Index;
 
-
-    // Check for invalid NotifyTpl if a notify event type
     if ((Type & (EVT_NOTIFY_WAIT | EVT_NOTIFY_SIGNAL)) != 0) {
         if (NotifyTpl != TPL_APPLICATION &&
             NotifyTpl != TPL_CALLBACK    &&
@@ -314,7 +243,6 @@ EFI_STATUS EFIAPI OurCreateEventEx (
         return EFI_INVALID_PARAMETER;
     }
 
-    // Ensure no reserved flags are set
     Status = EFI_INVALID_PARAMETER;
     for (Index = 0; Index < (sizeof (rEventTable) / sizeof (UINT32)); Index++) {
         if (Type == rEventTable[Index]) {
@@ -326,10 +254,8 @@ EFI_STATUS EFIAPI OurCreateEventEx (
         return EFI_INVALID_PARAMETER;
     }
 
-    // Convert Event type for pre-defined Event groups
     if (EventGroup != NULL) {
-        // EVT_SIGNAL_EXIT_BOOT_SERVICES and EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE
-        // are invalid For EventGroup
+
         if ((Type == EVT_SIGNAL_EXIT_BOOT_SERVICES) ||
             (Type == EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE)
         ) {
@@ -346,7 +272,7 @@ EFI_STATUS EFIAPI OurCreateEventEx (
         }
     }
     else {
-        // Convert EFI 1.x Events to their UEFI 2.x CreateEventEx mapping
+
         if (Type == EVT_SIGNAL_EXIT_BOOT_SERVICES) {
             EventGroup = &gEfiEventExitBootServicesGuid;
         }
@@ -357,9 +283,8 @@ EFI_STATUS EFIAPI OurCreateEventEx (
         }
     }
 
-    // Check parameters if notify event type
     if ((Type & (EVT_NOTIFY_WAIT | EVT_NOTIFY_SIGNAL)) != 0) {
-        // Check for invalid NotifyFunction or NotifyTpl
+
         if ((NotifyFunction == NULL)       ||
             (NotifyTpl <= TPL_APPLICATION) ||
             (NotifyTpl >= TPL_HIGH_LEVEL)
@@ -368,13 +293,12 @@ EFI_STATUS EFIAPI OurCreateEventEx (
         }
     }
     else {
-        // No notification needed ... Zero out ignored values
+
         NotifyTpl      = 0;
         NotifyFunction = NULL;
         NotifyContext  = NULL;
     }
 
-    // Allocate and initialize a new event structure.
     IEvent = ((Type & EVT_RUNTIME) != 0)
         ? AllocateRuntimeZeroPool (sizeof (IEVENT))
         : AllocateZeroPool (sizeof (IEVENT));
@@ -397,7 +321,7 @@ EFI_STATUS EFIAPI OurCreateEventEx (
     *Event = IEvent;
 
     if ((Type & EVT_RUNTIME) != 0) {
-        // Keep a list of all RT events so we can tell the RT AP.
+
         IEvent->RuntimeData.Type           = Type;
         IEvent->RuntimeData.NotifyTpl      = NotifyTpl;
         IEvent->RuntimeData.NotifyFunction = NotifyFunction;
@@ -409,73 +333,52 @@ EFI_STATUS EFIAPI OurCreateEventEx (
     OurAcquireLock (&zEventQueueLock);
 
     if ((Type & EVT_NOTIFY_SIGNAL) != 0x00000000) {
-        // The Event's NotifyFunction must be queued whenever the event is signaled
+
         InsertHeadList (&zEventSignalQueue, &IEvent->SignalLink);
     }
 
     OurReleaseLock (&zEventQueueLock);
 
-    // Done
     return EFI_SUCCESS;
-} // EFI_STATUS OurCreateEventEx()
+}
 
-/**
-  @retval EFI_SUCCESS               The command completed successfully.
-  @retval EFI_OUT_OF_RESOURCES      Out of memory.
-  @retval EFI_ALREADY_STARTED       Already on UEFI 2.0 or later.
-  @retval EFI_PROTOCOL_ERROR        Unexpected Field Offset.
-  @retval EFI_NOT_STARTED           Aborted Process ... PreferUGA
-**/
 EFI_STATUS AmendSysTable (VOID) {
     EFI_BOOT_SERVICES *uBS;
 
-    /* Check EFI Revision */
     if (gBS->Hdr.Revision >= EFI_REVISION_MIN ||
         gRT->Hdr.Revision >= EFI_REVISION_MIN ||
         gST->Hdr.Revision >= EFI_REVISION_MIN
     ) {
-        // Early Return
+
         return EFI_ALREADY_STARTED;
     }
 
     if (gBS->Hdr.HeaderSize > EFI_FIELD_OFFSET(EFI_BOOT_SERVICES, CreateEventEx)) {
-        // Early Return
+
         return EFI_PROTOCOL_ERROR;
     }
 
     uBS = (EFI_BOOT_SERVICES *) AllocateCopyPool (sizeof (EFI_BOOT_SERVICES), gBS);
     if (uBS == NULL) {
-        // Early Return
+
         return EFI_OUT_OF_RESOURCES;
     }
 
-    /* Amend SystemTable */
     gST->BootServices    = gBS;
     gST->RuntimeServices = gRT;
     gST->Hdr.HeaderSize  = sizeof (EFI_SYSTEM_TABLE);
     gST->Hdr.Revision    = EFI_REVISION_MOD;
     gST->Hdr.CRC32       = 0;
-    REFIT_CALL_3_WRAPPER(
-        gBS->CalculateCrc32, gST,
-        gST->Hdr.HeaderSize, &gST->Hdr.CRC32
-    );
+    gBS->CalculateCrc32(gST, gST->Hdr.HeaderSize, &gST->Hdr.CRC32);
 
-    /* Amend BootServices */
     uBS->CreateEventEx   = OurCreateEventEx;
     uBS->Hdr.HeaderSize  = sizeof (EFI_BOOT_SERVICES);
     uBS->Hdr.Revision    = EFI_REVISION_MOD;
     uBS->Hdr.CRC32       = 0;
-    REFIT_CALL_3_WRAPPER(
-        uBS->CalculateCrc32, uBS,
-        uBS->Hdr.HeaderSize, &uBS->Hdr.CRC32
-    );
+    uBS->CalculateCrc32(uBS, uBS->Hdr.HeaderSize, &uBS->Hdr.CRC32);
     gBS = uBS;
 
-    /* Flag Amendment */
     SetSysTab = TRUE;
 
     return EFI_SUCCESS;
-} // EFI_STATUS AmendSysTable()
-
-#endif
-// Check Compile Type - End
+}
