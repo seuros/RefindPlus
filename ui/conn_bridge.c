@@ -584,6 +584,8 @@ static VOID ConnNetworkBringUp(ConnNetPumpCtx *Ctx)
     FillSysInfo(Ctx->List);
 }
 
+static ConnColor AccentForEntry(CHAR8 OSType, CONST CHAR16 *Hint);
+
 static ConnColor AccentForOSType(CHAR8 OSType)
 {
     switch (OSType) {
@@ -663,7 +665,7 @@ static VOID FillLoaderMeta(ConnEntry *E, LOADER_ENTRY *Le, MERIDIAN_MENU_ENTRY *
     }
     E->part[q] = '\0';
     PutLoaderBasename(E->loader, sizeof E->loader, Le->LoaderPath);
-    E->accent = AccentForOSType(Le->OSType);
+    E->accent = AccentForEntry(Le->OSType, (Le->Title != NULL) ? Le->Title : Me->Title);
     E->locked = FALSE;
 }
 
@@ -1749,6 +1751,21 @@ static UINTN SplashIndexFor(CHAR8 OSType, CONST CHAR16 *Hint)
     }
 }
 
+static ConnColor AccentForSplash(UINTN Idx, CHAR8 OSType)
+{
+    UINTN Oma = SplashFind("omarchy");
+
+    if (Oma != 0 && Idx == Oma) {
+        return CONN_OMA;
+    }
+    return AccentForOSType(OSType);
+}
+
+static ConnColor AccentForEntry(CHAR8 OSType, CONST CHAR16 *Hint)
+{
+    return AccentForSplash(SplashIndexFor(OSType, Hint), OSType);
+}
+
 VOID ConnLaunchSplash(IN CHAR8 OSType, IN CONST CHAR16 *Hint)
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL Black = {0, 0, 0, 0};
@@ -1769,7 +1786,7 @@ VOID ConnLaunchSplash(IN CHAR8 OSType, IN CONST CHAR16 *Hint)
     }
 
     idx = SplashIndexFor(OSType, Hint);
-    accent = AccentForOSType(OSType);
+    accent = AccentForSplash(idx, OSType);
     ar = (UINT32)CONN_R(accent);
     ag = (UINT32)CONN_G(accent);
     ab = (UINT32)CONN_B(accent);

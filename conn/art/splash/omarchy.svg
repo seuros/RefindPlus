@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com> -->
+<!-- Omarchy: the square-labyrinth mark (Omarchy(TM), basecamp), not the
+     OMARCHY wordmark. Vectorised losslessly from the distro's own
+     /usr/share/omarchy/icon.png, which is an exact 15x15 cell grid of 20px
+     cells; each cell here is 16px, so the mark is 240px centred in the 256px
+     splash field. Filled white: the splash plane is mono coverage and the
+     runtime tints it with the entry accent. Omarchy's own green is #9ECE6A
+     (matching ANSI_COLOR in its os-release) if the mark is ever drawn in
+     colour. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#fff" shape-rendering="crispEdges">
+    <rect x="8" y="8" width="240" height="16"/>
+    <rect x="8" y="24" width="16" height="224"/>
+    <rect x="120" y="24" width="16" height="32"/>
+    <rect x="232" y="24" width="16" height="224"/>
+    <rect x="40" y="40" width="80" height="16"/>
+    <rect x="184" y="40" width="32" height="16"/>
+    <rect x="40" y="56" width="16" height="160"/>
+    <rect x="200" y="56" width="16" height="160"/>
+    <rect x="24" y="120" width="16" height="16"/>
+    <rect x="56" y="200" width="144" height="16"/>
+    <rect x="120" y="216" width="16" height="32"/>
+    <rect x="24" y="232" width="96" height="16"/>
+    <rect x="152" y="232" width="80" height="16"/>
+  </g>
+</svg>

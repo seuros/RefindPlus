@@ -53,9 +53,10 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "core", "splash_atlas.h")
 # Order is the runtime index order. Index 0 is the generic fallback. The keys
 # are matched (case-insensitive substring of the cleaned entry title) in THIS
 # order by ConnLaunchSplash(), so the generic "linux" MUST come last -- else
-# "Arch Linux" would match "linux" before "arch". Unmatched OSes fall back to
-# the OSType char map, then to index 0.
-KEYS = ["meridian", "cydia", "macos", "windows", "arch",
+# "Arch Linux" would match "linux" before "arch". By the same rule "omarchy"
+# must precede "arch", which it contains. Unmatched OSes fall back to the
+# OSType char map, then to index 0.
+KEYS = ["meridian", "cydia", "macos", "windows", "omarchy", "arch",
         "freebsd", "dragonfly", "openbsd", "netbsd", "ghostbsd", "9front", "linux"]
 
 

@@ -76,14 +76,16 @@ zfsloader.efi"
 
 #define SELF_LOADER_PATTERNS L"meridian*.efi"
 
+// Scanned front to back and matched as substrings: a distro whose name
+// contains another must come first, or "Omarchy" reports as "Arch".
 #define BASE_LINUX_DISTROS                                                                         \
-    L"Arch,Artful,Bionic,CachyOS,Centos,Chakra,Crunchbang,Debian,Deepin,Devuan,\
+    L"Omarchy,Arch,Artful,Bionic,CachyOS,Centos,Chakra,Crunchbang,Debian,Deepin,Devuan,\
 Elementary,EndeavourOS,Fedora,Frugalware,Gentoo,LinuxMint,\
 Mageia,Mandriva,Manjaro,OpenSUSE,Redhat,Slackware,SUSE,\
 Kubuntu,Lubuntu,Xubuntu,Ubuntu,Void,Zorin"
 
 #define MAIN_LINUX_DISTROS                                                                         \
-    L"Arch,CachyOS,Debian,Deepin,Elementary,EndeavourOS,Fedora,Gentoo,\
+    L"Omarchy,Arch,CachyOS,Debian,Deepin,Elementary,EndeavourOS,Fedora,Gentoo,\
 LinuxMint,Manjaro,OpenSUSE,Redhat,Slackware,SUSE,Ubuntu,Zorin"
 
 #define RECOVERY_NAME_HFS L"HFS+ Instance"

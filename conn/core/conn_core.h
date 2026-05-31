@@ -85,6 +85,8 @@ extern const ConnTextTheme *const conn_themes[CONN_THEME_COUNT];
 #define CONN_COBALT CONN_RGB(0x44, 0x88, 0xCC)
 #define CONN_HONEY CONN_RGB(0xDD, 0xBB, 0x33)
 
+#define CONN_OMA CONN_RGB(0x9E, 0xCE, 0x6A)
+
 #define CONN_MAX_ENTRIES 24
 
 typedef struct
