@@ -88,15 +88,82 @@ static INTN ucs_len(const char *s) {
     return n;
 }
 
+// Words with a spelling of their own. Volume labels arrive SHOUTING far too
+// often to print raw, but blind title casing turns FREEBSD into "Freebsd" and
+// APFS into "Apfs", which is how you tell a boot manager nobody ever looked at.
+// Matched case-insensitively against a whole word; the spelling here wins.
+static const char *const CANON[] = {
+    "macOS", "iOS", "OS", "FreeBSD", "OpenBSD", "NetBSD", "DragonFly",
+    "GhostBSD", "MidnightBSD", "BSD", "9front", "openSUSE", "GNU", "PC-BSD",
+    "APFS", "HFS", "NTFS", "ZFS", "UFS", "FFS", "BFS", "XFS", "JFS", "FAT32",
+    "EXT2", "EXT3", "EXT4", "HAMMER2", "LUKS", "LVM", "RAID", "ReFS",
+    "GPT", "MBR", "ESP", "EFI", "UEFI", "NVMe", "SSD", "HD", "USB", "DHH",
+    "PinkPuffy", "CURRENT", "STABLE", "RELEASE",
+};
+
+static UINTN word_len(const char *s) {
+    UINTN n = 0;
+    while ((s[n] >= 'A' && s[n] <= 'Z') || (s[n] >= 'a' && s[n] <= 'z') ||
+           (s[n] >= '0' && s[n] <= '9') || s[n] == '-')
+        n++;
+    return n;
+}
+
+static char upper(char c) { return c >= 'a' && c <= 'z' ? (char)(c - 32) : c; }
+
+// Whole-word case-insensitive match of src[0..n) against the NUL-terminated cand.
+static INTN word_eq_ci(const char *src, UINTN n, const char *cand) {
+    UINTN i = 0;
+    for (; i < n; i++) {
+        if (cand[i] == '\0' || upper(src[i]) != upper(cand[i])) return 0;
+    }
+    return cand[i] == '\0';
+}
+
+// A short alphabetic run followed only by digits is a release tag, not a word:
+// RC5, B3. Longer runs are names that title case correctly (Beta5, Hammer2).
+static INTN is_release_tag(const char *s, UINTN n) {
+    UINTN a = 0;
+    while (a < n && ((s[a] >= 'A' && s[a] <= 'Z') || (s[a] >= 'a' && s[a] <= 'z')))
+        a++;
+    if (a == 0 || a > 3 || a == n) return 0;
+    for (UINTN i = a; i < n; i++)
+        if (s[i] < '0' || s[i] > '9') return 0;
+    return 1;
+}
+
+static const char *canon_for(const char *s, UINTN n) {
+    for (UINTN k = 0; k < sizeof CANON / sizeof CANON[0]; k++)
+        if (word_eq_ci(s, n, CANON[k])) return CANON[k];
+    return NULL;
+}
+
 static VOID title_case(const char *src, char *dst, UINTN cap) {
-    INTN prev_alpha = 0; UINTN j = 0;
-    for (UINTN i = 0; src[i] && j + 1 < cap; i++) {
+    INTN prev_word = 0; UINTN j = 0;
+    for (UINTN i = 0; src[i] && j + 1 < cap;) {
         unsigned char c = (unsigned char)src[i];
+        INTN alnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                     (c >= '0' && c <= '9');
+        if (alnum && !prev_word) {
+            UINTN n = word_len(src + i);
+            const char *fixed = canon_for(src + i, n);
+            if (fixed != NULL) {
+                for (UINTN k = 0; fixed[k] && j + 1 < cap; k++) dst[j++] = fixed[k];
+                i += n; prev_word = 1;
+                continue;
+            }
+            if (is_release_tag(src + i, n)) {
+                for (UINTN k = 0; k < n && j + 1 < cap; k++) dst[j++] = upper(src[i + k]);
+                i += n; prev_word = 1;
+                continue;
+            }
+        }
         INTN alpha = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-        if (alpha) dst[j++] = !prev_alpha ? (char)(c >= 'a' ? c - 32 : c)
-                                          : (char)(c <= 'Z' ? c + 32 : c);
+        if (alpha) dst[j++] = !prev_word ? upper((char)c)
+                                         : (char)(c <= 'Z' ? c + 32 : c);
         else       dst[j++] = (char)c;
-        prev_alpha = alpha;
+        prev_word = alpha;
+        i++;
     }
     dst[j] = '\0';
 }

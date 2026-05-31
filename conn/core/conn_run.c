@@ -13,8 +13,10 @@ static VOID zero_bytes(VOID *ptr, UINTN size)
 }
 
 EFI_STATUS EFIAPI ConnUiRun(ConnFw *Fw) {
-    const ConnTextTheme *theme = &CONN_TXT_ATARI;
+    return ConnUiRunThemed(Fw, &CONN_TXT_ATARI);
+}
 
+EFI_STATUS EFIAPI ConnUiRunThemed(ConnFw *Fw, const ConnTextTheme *theme) {
     UINTN w = conn_text_width();
     UINTN h = conn_text_height();
 

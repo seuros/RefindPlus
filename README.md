@@ -5,12 +5,21 @@ identity for a codebase descended from RefindPlus and rEFInd, with local work
 focused on EDK2 builds, Apple firmware support, generic UEFI PCs, OpenCore and
 Clover chain-loading, Secure Boot/MOK tooling, and filesystem driver support.
 
-![The Conn boot menu, ATARI theme](.github/media/conn-menu.png)
+![The Conn boot menu, ATARI theme](.github/media/conn-atari.png)
 
-That is the Conn interface, rendered by the real engine. The screenshot is
-produced by `make -C conn render`, which builds the compositor as an ordinary
-host program, runs it against a mock scan and writes the framebuffer out as a
-PNG. Same code path draws it on hardware over GOP or UGA.
+That is the Conn interface, rendered by the real engine. Nothing here is a
+mockup: `make -C conn render-themes` builds the compositor as an ordinary host
+program, runs it against a mock scan and writes the framebuffer out as a PNG.
+The same code path draws it on hardware over GOP or UGA.
+
+Three themes ship, cycled with `T` at the menu. ATARI above, then PDP and C64:
+
+| PDP | C64 |
+| --- | --- |
+| ![PDP theme](.github/media/conn-pdp.png) | ![C64 theme](.github/media/conn-c64.png) |
+
+ATARI and PDP apply a scanline pass; C64 does not, because a machine that put
+its text on a television had no scanlines to simulate.
 
 The public name of this repository is Meridian. New package metadata, user
 documentation, generated assets, workflow names, and user-facing text should use

@@ -38,6 +38,16 @@ $(PNGBIN): $(CORE) $(HOST_PNG) core/conn_core.h efi/efi_env.h core/font_atlas.h 
 render: $(PNGBIN)
 	$(PNGBIN) $(BUILD)/conn-text-crt-80x25.png
 
+# one render per theme, quantised for the README. Needs ImageMagick.
+MEDIA := ../.github/media
+render-themes: $(PNGBIN)
+	@mkdir -p $(MEDIA)
+	@set -e; i=0; for n in atari pdp c64; do \
+	  $(PNGBIN) $(BUILD)/theme-$$n.png $$i >/dev/null; \
+	  magick $(BUILD)/theme-$$n.png -strip -colors 64 PNG8:$(MEDIA)/conn-$$n.png; \
+	  echo "  $(MEDIA)/conn-$$n.png"; i=$$((i+1)); \
+	done
+
 # regression test: engine output must be pixel-identical to the committed golden
 # (needs ImageMagick). Update the golden with `make golden` after a deliberate
 # visual change.

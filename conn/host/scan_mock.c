@@ -12,16 +12,16 @@ typedef struct {
 } MockEntry;
 
 static const MockEntry MOCK[] = {
-    {"MACOS SEQUOIA", "APFS \xC2\xB7 MACINTOSH HD", "D0 P2", "boot.efi", CONN_ICE, FALSE},
-    {"ARCH LINUX", "LINUX 7.1.0-RC5 \xC2\xB7 EXT4", "D0 P3", "grubx64.efi", CONN_SKY, FALSE},
-    {"OMARCHY", "HYPRLAND \xC2\xB7 BTRFS LUKS", "D0 P4", "limine.efi", CONN_CORAL, FALSE},
-    {"WINDOWS 11", "24H2 \xC2\xB7 NTFS BOOTMGR", "D0 P1", "bootmgfw.efi", CONN_LAV, TRUE},
-    {"FREEBSD", "16-CURRENT \xC2\xB7 ZFS", "D0 P5", "loader.efi", CONN_RED, FALSE},
-    {"NETBSD", "11.0 RC4 \xC2\xB7 FFS", "D1 P1", "bootx64.efi", CONN_AMBER, FALSE},
+    {"MACOS TAHOE", "26.6.2 \xC2\xB7 APFS \xC2\xB7 MACINTOSH", "D0 P2", "boot.efi", CONN_ICE, FALSE},
+    {"ARCH LINUX", "LINUX 7.1.10 \xC2\xB7 EXT4", "D0 P3", "grubx64.efi", CONN_SKY, FALSE},
+    {"OMARCHY BY DHH", "4 QUATTRO \xC2\xB7 BTRFS LUKS", "D0 P4", "limine.efi", CONN_CORAL, FALSE},
+    {"WINDOWS 11", "25H2 \xC2\xB7 NTFS BOOTMGR", "D0 P1", "bootmgfw.efi", CONN_LAV, TRUE},
+    {"FREEBSD", "16.0-CURRENT \xC2\xB7 ZFS", "D0 P5", "loader.efi", CONN_RED, FALSE},
+    {"NETBSD", "11.99 CURRENT \xC2\xB7 FFS", "D1 P1", "bootx64.efi", CONN_AMBER, FALSE},
     {"OPENBSD", "7.9 PINKPUFFY \xC2\xB7 FFS", "D1 P2", "bootx64.efi", CONN_HONEY, FALSE},
     {"DRAGONFLY BSD", "6.4.2 \xC2\xB7 HAMMER2", "D1 P3", "loader.efi", CONN_COBALT, FALSE},
-    {"HAIKU", "R1/BETA5 \xC2\xB7 BFS SYSTEM", "D1 P4", "haiku_loader.efi", CONN_GOLD, FALSE},
-    {"9FRONT", "HUMANBIOLOGY \xC2\xB7 FOSSIL", "D1 P5", "bootx64.efi", CONN_PEACH, FALSE},
+    {"HAIKU", "R1/BETA6 \xC2\xB7 BFS SYSTEM", "D1 P4", "haiku_loader.efi", CONN_GOLD, FALSE},
+    {"9FRONT", "THIS WAS SUPPOSED TO BE FUN", "D1 P5", "bootx64.efi", CONN_PEACH, FALSE},
 };
 #define NMOCK ((UINTN)(sizeof(MOCK) / sizeof(MOCK[0])))
 

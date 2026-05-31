@@ -20,6 +20,8 @@ typedef struct {
 } ConnFw;
 
 EFI_STATUS EFIAPI ConnUiRun(ConnFw *Fw);
+// Same, with an explicit theme. ConnUiRun() is this with the default.
+EFI_STATUS EFIAPI ConnUiRunThemed(ConnFw *Fw, const ConnTextTheme *theme);
 
 typedef struct {
     EFI_HANDLE volume;

@@ -10,14 +10,19 @@
 
 int main(int argc, char **argv) {
     const char *path = argc > 1 ? argv[1] : "conn-host-png.png";
+    int ti = argc > 2 ? atoi(argv[2]) : 0;
+    if (ti < 0 || ti >= CONN_THEME_COUNT) {
+        fprintf(stderr, "theme index must be 0..%d\n", CONN_THEME_COUNT - 1);
+        return 1;
+    }
 
     UINTN w = conn_text_width(), h = conn_text_height();
     ConnFw *fw = conn_host_init(w, h);
     if (!fw) { fprintf(stderr, "shim init failed\n"); return 1; }
 
-    EFI_STATUS st = ConnUiRun(fw);
+    EFI_STATUS st = ConnUiRunThemed(fw, conn_themes[ti]);
     if (EFI_ERROR(st)) {
-        fprintf(stderr, "ConnUiRun failed: 0x%lx\n", (unsigned long)st);
+        fprintf(stderr, "ConnUiRunThemed failed: 0x%lx\n", (unsigned long)st);
         conn_host_free(fw);
         return 1;
     }
@@ -38,7 +43,7 @@ int main(int argc, char **argv) {
     free(rgba);
     conn_host_free(fw);
     if (err) { fprintf(stderr, "png write failed\n"); return 1; }
-    printf("wrote %s (%lux%lu, via ConnUiRun/GOP Blt)\n",
-           path, (unsigned long)fw_w, (unsigned long)fw_h);
+    printf("wrote %s (%lux%lu, %s, via ConnUiRunThemed/GOP Blt)\n",
+           path, (unsigned long)fw_w, (unsigned long)fw_h, conn_themes[ti]->name);
     return 0;
 }
