@@ -108,3 +108,11 @@ SPDX-License-Identifier = "MIT"
 path = "conn/test/golden/*.png"
 SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
 SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    ".github/media/*.png",
+    "conn/test/golden/*.png",
+]
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"

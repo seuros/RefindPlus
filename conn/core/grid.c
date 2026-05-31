@@ -446,8 +446,10 @@ VOID conn_build_text_grid(ConnGrid *g, const ConnEntryList *list,
             "\xE2\x86\x91\xE2\x86\x93 select   ENTER boot   E options   "
             "\xE2\x86\x90\xE2\x86\x92 sys   T theme",
             th->dim, TRANSPARENT, FALSE);
+    // Right-aligned to col 76, mirroring the hint row's left margin of 3. The
+    // hint above ends at col 55, so anything starting before 56 clips it.
     if (st->status == CONN_UI_LAUNCH_FAILED) {
-        puts_at(g, CONN_COLS - 25, CONN_ROWS - 2, "launch failed", th->hi, TRANSPARENT, TRUE);
+        puts_at(g, CONN_COLS - 16, CONN_ROWS - 2, "launch failed", th->hi, TRANSPARENT, TRUE);
     } else if (st->autoboot && !st->cancelled) {
         char rb[16];
         const char *p = "auto-boot 00:"; UINTN j = 0;
@@ -456,6 +458,6 @@ VOID conn_build_text_grid(ConnGrid *g, const ConnEntryList *list,
         rb[j++] = (char)('0' + (s / 10) % 10);
         rb[j++] = (char)('0' + s % 10);
         rb[j] = '\0';
-        puts_at(g, CONN_COLS - 25, CONN_ROWS - 2, rb, th->hi, TRANSPARENT, TRUE);
+        puts_at(g, CONN_COLS - 18, CONN_ROWS - 2, rb, th->hi, TRANSPARENT, TRUE);
     }
 }

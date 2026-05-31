@@ -5,6 +5,13 @@ identity for a codebase descended from RefindPlus and rEFInd, with local work
 focused on EDK2 builds, Apple firmware support, generic UEFI PCs, OpenCore and
 Clover chain-loading, Secure Boot/MOK tooling, and filesystem driver support.
 
+![The Conn boot menu, ATARI theme](.github/media/conn-menu.png)
+
+That is the Conn interface, rendered by the real engine. The screenshot is
+produced by `make -C conn render`, which builds the compositor as an ordinary
+host program, runs it against a mock scan and writes the framebuffer out as a
+PNG. Same code path draws it on hardware over GOP or UGA.
+
 The public name of this repository is Meridian. New package metadata, user
 documentation, generated assets, workflow names, and user-facing text should use
 Meridian. Older RefindPlus and rEFInd names remain only where they describe

@@ -52,12 +52,22 @@ def _arrow(up):
         d.line([(cx, tip), (cx+4, tip+4*head)], fill=255, width=2)
     return draw
 
+def _harrow(left):
+    def draw(d, b):
+        cy = CELL_H//2 - 2; tip = 3 if left else CELL_W-4; tail = CELL_W-4 if left else 3
+        d.line([(tail, cy), (tip, cy)], fill=255, width=2)
+        head = 1 if left else -1
+        d.line([(tip, cy), (tip+4*head, cy-4)], fill=255, width=2)
+        d.line([(tip, cy), (tip+4*head, cy+4)], fill=255, width=2)
+    return draw
+
 PROC = {
     0x2500: _h,        0x2502: _v,
     0x250C: _corner( 1,  1), 0x2510: _corner(-1,  1),
     0x2514: _corner( 1, -1), 0x2518: _corner(-1, -1),
     0x251C: _tee( 1),  0x2524: _tee(-1),
     0x2191: _arrow(True), 0x2193: _arrow(False),
+    0x2190: _harrow(True), 0x2192: _harrow(False),
 }
 
 def glyph_set():
