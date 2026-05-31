@@ -1,0 +1,36 @@
+## @file
+#  SmSelfTest - link/runtime smoke for the libstatemachines EDK2 integration.
+#
+#  Standalone UEFI application: builds a flat FSM via StateMachineLib and runs a
+#  handful of dispatches, printing pass/fail. Its only purpose is to prove the
+#  vendored runtime compiles and links under Meridian's toolchain; it is not part
+#  of the boot manager image.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = SmSelfTest
+    FILE_GUID      = 08958e60-2ed4-4d51-8333-d0dfabef9665
+    MODULE_TYPE    = UEFI_APPLICATION
+    VERSION_STRING = 0.1.0
+    ENTRY_POINT    = UefiMain
+
+[Sources]
+    SmSelfTest.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+
+[LibraryClasses]
+    UefiApplicationEntryPoint
+    UefiLib
+    StateMachineLib
+
+[BuildOptions]
+    # Mirror StateMachineLib: select the freestanding profile and supply our UEFI
+    # port ahead of the library's public header (SmSelfTest.c includes
+    # state_machine.h directly, so it needs the port too).
+    *_*_*_CC_FLAGS = -DSTATE_MACHINE_FREESTANDING -I$(WORKSPACE)/MeridianPkg/Library/StateMachineLib -I$(WORKSPACE)/MeridianPkg/libstatemachines/include

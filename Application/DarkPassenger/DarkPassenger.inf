@@ -1,0 +1,48 @@
+## @file
+#  DarkPassenger - loadable EFI tool that undoes vendor hardware lockouts.
+#
+#  Standalone UEFI application: iterates a registry of "passengers" (one per
+#  lockout), each detecting/reporting (read-only) and optionally undoing a
+#  vendor function-disable. Passenger #1 wakes the Apple-disabled Haswell-ULT /
+#  Lynx Point-LP LPSS block. Links nothing from the Meridian core -- ships as a
+#  rescue-stick .efi tool, not part of the boot manager image.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = DarkPassenger
+    FILE_GUID      = 56f03ea7-a13d-4c46-b2dd-5c95524838d0
+    MODULE_TYPE    = UEFI_APPLICATION
+    VERSION_STRING = 0.1.0
+    ENTRY_POINT    = UefiMain
+
+[Sources]
+    DarkPassenger.c
+    dp_util.c
+    passenger_lpss.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+
+[LibraryClasses]
+    UefiApplicationEntryPoint
+    UefiLib
+    BaseLib
+    BaseMemoryLib
+    MemoryAllocationLib
+    PrintLib
+    IoLib
+    UefiBootServicesTableLib
+
+[Protocols]
+    gEfiPciIoProtocolGuid
+    gEfiPciRootBridgeIoProtocolGuid
+    gEfiSimpleFileSystemProtocolGuid
+    gEfiAcpiTableProtocolGuid          # optional fast path for SSDT injection
+
+[Guids]
+    gEfiAcpiTableGuid                  # ACPI 2.0+ RSDP (config table)
+    gEfiAcpi10TableGuid                # ACPI 1.0 RSDP fallback

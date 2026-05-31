@@ -1,0 +1,54 @@
+## @file
+#  Cydia - right-to-repair pre-OS hardware diagnostic.
+#
+#  Standalone UEFI application: boots from a FAT USB stick on a machine that may
+#  not POST into any OS, scans every component reachable at the UEFI layer
+#  (SMBIOS, GOP/EDID, BlockIo, SNP, TCG2, UsbIo, and the Apple SMC on pre-T2
+#  Intel Macs), diffs the result against a per-SMBIOS-model expectation table,
+#  and writes a plain-language repair report (cydia-report.txt) back to the
+#  stick. Read-only w.r.t. the subject -- links nothing from the Meridian core.
+#
+#  Named for Cydia pomonella, the codling moth (the worm in the apple).
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = Cydia
+    FILE_GUID      = 9f2c4b6e-7a51-4d38-9c1e-2b7e6a4f0c93
+    MODULE_TYPE    = UEFI_APPLICATION
+    VERSION_STRING = 0.1.0
+    ENTRY_POINT    = UefiMain
+
+[Sources]
+    Cydia.c
+    scan.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+
+[LibraryClasses]
+    UefiApplicationEntryPoint
+    UefiLib
+    BaseLib
+    BaseMemoryLib
+    MemoryAllocationLib
+    PrintLib
+    IoLib
+    UefiBootServicesTableLib
+
+[Protocols]
+    gEfiSimpleFileSystemProtocolGuid
+    gEfiLoadedImageProtocolGuid
+    gEfiGraphicsOutputProtocolGuid
+    gEfiEdidActiveProtocolGuid
+    gEfiBlockIoProtocolGuid
+    gEfiSimpleNetworkProtocolGuid
+    gEfiUsbIoProtocolGuid
+    gEfiTcg2ProtocolGuid
+
+[Guids]
+    gEfiSmbiosTableGuid
+    gEfiSmbios3TableGuid
