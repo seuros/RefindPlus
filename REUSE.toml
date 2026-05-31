@@ -1,0 +1,110 @@
+version = 1
+
+# ── Meridian project files without inline headers ──────────────────────────
+
+[[annotations]]
+path = [
+    "**.md",
+    "**.txt",
+    "CREDITS.txt",
+    "README.md",
+]
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "LICENSE.txt"
+SPDX-FileCopyrightText = "Free Software Foundation, Inc."
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "filesystems/README.LZO",
+    "filesystems/design.dox",
+    ".clang-format",
+    ".editorconfig",
+    ".gitattributes",
+    ".gitignore",
+    ".gitmodules",
+    ".mise.toml",
+    "MeridianPkg.dec",
+]
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "scripts/**"
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = ".github/**"
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "banners/**"
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# ── zstd -- BSD-2-Clause OR GPL-2.0-only ────────────────────────────────────
+
+[[annotations]]
+path = "filesystems/zstd/**"
+SPDX-FileCopyrightText = "2016 Yann Collet, Meta Platforms, Inc."
+SPDX-License-Identifier = "BSD-2-Clause OR GPL-2.0-or-later"
+
+[[annotations]]
+path = "filesystems/fsw_btrfs_zstd.h"
+SPDX-FileCopyrightText = [
+    "2016 Yann Collet, Meta Platforms, Inc.",
+    "2021-2026 Dayo Akanji",
+]
+SPDX-License-Identifier = "BSD-2-Clause OR GPL-2.0-or-later"
+
+# ── LZO -- GPL-2.0-or-later ─────────────────────────────────────────────────
+
+[[annotations]]
+path = [
+    "filesystems/minilzo.c",
+    "filesystems/minilzo.h",
+    "filesystems/lzoconf.h",
+    "filesystems/lzodefs.h",
+]
+SPDX-FileCopyrightText = "1996-2017 Markus F.X.J. Oberhumer"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# ── Filesystem vendor license files ────────────────────────────────────────
+
+[[annotations]]
+path = [
+    "filesystems/LICENSE.txt",
+    "filesystems/LICENSE_GPL.txt",
+]
+SPDX-FileCopyrightText = "Free Software Foundation, Inc."
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# ── AutoGen (EDK2 generated) ───────────────────────────────────────────────
+
+[[annotations]]
+path = "filesystems/AutoGen.*"
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# ── Vendored Lua 5.4 (upstream files start with "l"; the freestanding libc
+#    shim headers next to them use standard C names and carry inline headers) ─
+
+[[annotations]]
+path = [
+    "Library/LuaLib/upstream/l*.c",
+    "Library/LuaLib/upstream/l*.h",
+]
+SPDX-FileCopyrightText = "1994-2024 Lua.org, PUC-Rio"
+SPDX-License-Identifier = "MIT"
+
+# ── Conn engine golden-image test references (committed engine snapshots) ────
+
+[[annotations]]
+path = "conn/test/golden/*.png"
+SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
