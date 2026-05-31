@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+* text=auto eol=lf
+
+*.png binary
+*.afdesign binary
+*.efi binary
+*.cer binary
+*.crt text eol=lf
+
+*.c text eol=lf
+*.h text eol=lf
+*.inf text eol=lf
+*.dsc text eol=lf
+*.dec text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf
+*.py text eol=lf

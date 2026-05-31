@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+[env]
+EDK2_WORKSPACE = "{{config_root}}/edk2"
+
+[tasks.build]
+description = "Build Meridian (debug)"
+run = "./scripts/build.sh --target DEBUG"
+
+[tasks.release]
+description = "Build Meridian (release)"
+run = "./scripts/build.sh --target RELEASE"
+
+[tasks.build-arm]
+description = "Build Meridian for AArch64 (debug)"
+run = "./scripts/build.sh --arch AARCH64 --target DEBUG"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -rf edk2/Build/Meridian"
+
+[tasks.submodules]
+description = "Initialize EDK2 submodule"
+run = "git submodule update --init --recursive"
+
+[tasks.lint]
+description = "Check REUSE compliance"
+run = "reuse lint"
+
+[tasks.precommit]
+description = "Run pre-commit hooks against staged changes"
+run = "pre-commit run"
+
+[tasks.precommit-install]
+description = "Install Git pre-commit hooks"
+run = "pre-commit install"
+
+[tasks.tidy-staged]
+description = "Run clang-tidy against staged C changes"
+run = "./scripts/clang-tidy.sh --staged"
+
+[tasks.smoke-mac]
+description = "Boot Meridian under QEMU/Q35 with Apple SMBIOS + e1000 NIC"
+run = "./scripts/qemu-mac-smoke.sh"
+
+[tasks.smoke-arm]
+description = "Boot Meridian under QEMU ArmVirt (AArch64 smoke)"
+run = "./scripts/qemu-aarch64-smoke.sh"
+
+[tasks.check]
+description = "Run all repository health checks (REUSE, INF sources, DSC components, stale refs)"
+run = "./scripts/check.sh"
+
+[tools]
+python = "3"

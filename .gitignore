@@ -7,3 +7,33 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Build outputs
+Build/
+Conf/
+*.efi
+*.dll
+*.so
+*.o
+*.obj
+*.lib
+*.map
+*.pdb
+*.dSYM/
+
+# Local tooling
+compile_commands.json
+.cache/
+
+
+# local QEMU test harness outputs
+.qemu-*.log
+.qemu-*.txt
+.qemu-last.log
+
+# recon loot -- machine-specific firmware dumps, never commit
+loot/
+
+# Build/deploy bundles
+dist/
+

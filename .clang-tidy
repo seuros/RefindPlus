@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+# performance-no-int-to-ptr is disabled tree-wide rather than per-directory,
+# because scripts/clang-tidy.sh forces this file with -config-file and a
+# directory-local override would be ignored. The check is not actionable in
+# firmware: loaders/limine builds page tables, places an ELF image and writes a
+# kernel stack at addresses the firmware handed back as EFI_PHYSICAL_ADDRESS,
+# and while paging is still identity-mapped the integer *is* the pointer.
+Checks: >
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -bugprone-multiple-statement-macro,
+  -bugprone-narrowing-conversions,
+  -bugprone-reserved-identifier,
+  -bugprone-signed-char-misuse,
+  -bugprone-sizeof-expression,
+  -performance-no-int-to-ptr
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(Application|EfiLib|Library|boot|config|conn|discovery|drivers|install|kernel|lib|loaders|mok|net|platform|policy|recon|remote|storage|state-machines|tools|ui)/'
+FormatStyle: file
+SystemHeaders: false

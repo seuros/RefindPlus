@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+[submodule "edk2"]
+	path = edk2
+	url = https://github.com/tianocore/edk2.git
+	branch = edk2-stable202602
+	# We place a MeridianPkg symlink + build artifacts inside the work tree;
+	# only the pinned commit matters, so ignore working-tree dirtiness.
+	ignore = dirty
+[submodule "libstatemachines"]
+	path = libstatemachines
+	url = https://github.com/state-machines/libstatemachines.git

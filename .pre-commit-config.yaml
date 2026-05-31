@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+minimum_pre_commit_version: '3.0.0'
+default_install_hook_types:
+  - pre-commit
+
+repos:
+  - repo: local
+    hooks:
+      - id: meridian-check
+        name: Meridian repository checks
+        entry: scripts/check.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+
+      - id: clang-format-staged
+        name: clang-format staged C changes
+        entry: scripts/clang-format-check.sh
+        language: script
+        pass_filenames: false
+        files: '^(Application|EfiLib|Library|boot|config|conn|discovery|drivers|filesystems|include|install|kernel|lib|loaders|mok|net|platform|policy|recon|remote|storage|tools|ui)/.*\.[ch]$'
+
+      - id: clang-tidy-staged
+        name: clang-tidy staged C changes
+        entry: scripts/clang-tidy.sh --staged
+        language: script
+        pass_filenames: false
+        files: '^(Application|EfiLib|Library|boot|config|conn|discovery|drivers|filesystems|install|kernel|lib|loaders|mok|net|platform|policy|recon|remote|storage|tools|ui)/.*\.c$'
