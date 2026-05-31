@@ -14,7 +14,6 @@
 **/
 
 #include "NvmExpress.h"
-#include "nvme_call_wrapper.h"
 
 /**
   Read some sectors from the device.
@@ -170,15 +169,15 @@ EFI_STATUS NvmeRead (
 
     // Wait for the device's asynchronous I/O queue to become empty.
     while (TRUE) {
-        OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+        OldTpl  = gBS->RaiseTPL(TPL_NOTIFY);
         IsEmpty = IsListEmpty (&Device->AsyncQueue);
-        NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+        gBS->RestoreTPL(OldTpl);
 
         if (IsEmpty) {
             break;
         }
 
-        NVME_CALL_1_WRAPPER(gBS->Stall, 100);
+        gBS->Stall(100);
     }
 
     Status        = EFI_SUCCESS;
@@ -239,15 +238,15 @@ EFI_STATUS NvmeWrite (
 
     // Wait for the device's asynchronous I/O queue to become empty.
     while (TRUE) {
-        OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+        OldTpl  = gBS->RaiseTPL(TPL_NOTIFY);
         IsEmpty = IsListEmpty (&Device->AsyncQueue);
-        NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+        gBS->RestoreTPL(OldTpl);
 
         if (IsEmpty) {
             break;
         }
 
-        NVME_CALL_1_WRAPPER(gBS->Stall, 100);
+        gBS->Stall(100);
     }
 
     Status        = EFI_SUCCESS;
@@ -341,7 +340,7 @@ VOID EFIAPI AsyncIoCallback (
     NVME_CQ                     *Completion;
     EFI_BLOCK_IO2_TOKEN         *Token;
 
-    NVME_CALL_1_WRAPPER(gBS->CloseEvent, Event);
+    gBS->CloseEvent(Event);
 
     Subtask    = (NVME_BLKIO2_SUBTASK *) Context;
     Completion = (NVME_CQ *) Subtask->CommandPacket->NvmeCompletion;
@@ -363,7 +362,7 @@ VOID EFIAPI AsyncIoCallback (
         // Remove the BlockIo2 request from the device asynchronous queue.
         RemoveEntryList (&Request->Link);
         FREE_NVME_POOL(Request);
-        NVME_CALL_1_WRAPPER(gBS->SignalEvent, Token->Event);
+        gBS->SignalEvent(Token->Event);
     }
 
     FREE_NVME_POOL(Subtask->CommandPacket->NvmeCmd);
@@ -446,11 +445,7 @@ EFI_STATUS AsyncReadSectors (
         }
 
         // Create Event
-        Status = NVME_CALL_5_WRAPPER(
-            gBS->CreateEvent, EVT_NOTIFY_SIGNAL,
-            TPL_NOTIFY, AsyncIoCallback,
-            Subtask, &Subtask->Event
-        );
+        Status = gBS->CreateEvent(EVT_NOTIFY_SIGNAL, TPL_NOTIFY, AsyncIoCallback, Subtask, &Subtask->Event);
         if (EFI_ERROR(Status)) {
             break;
         }
@@ -472,10 +467,10 @@ EFI_STATUS AsyncReadSectors (
 
         CommandPacket->NvmeCmd->Flags = CDW10_VALID | CDW11_VALID | CDW12_VALID;
 
-        OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+        OldTpl = gBS->RaiseTPL(TPL_NOTIFY);
         InsertTailList (&Private->UnsubmittedSubtasks, &Subtask->Link);
         Request->UnsubmittedSubtaskNum++;
-        NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+        gBS->RestoreTPL(OldTpl);
 
         return EFI_SUCCESS;
     } while (0); // This 'loop' only runs once
@@ -487,7 +482,7 @@ EFI_STATUS AsyncReadSectors (
 
     if (Subtask != NULL) {
         if (Subtask->Event != NULL) {
-            NVME_CALL_1_WRAPPER(gBS->CloseEvent, Subtask->Event);
+            gBS->CloseEvent(Subtask->Event);
         }
 
         FREE_NVME_POOL(Subtask);
@@ -571,11 +566,7 @@ EFI_STATUS AsyncWriteSectors (
         }
 
         // Create Event
-        Status = NVME_CALL_5_WRAPPER(
-            gBS->CreateEvent, EVT_NOTIFY_SIGNAL,
-            TPL_NOTIFY, AsyncIoCallback,
-            Subtask, &Subtask->Event
-        );
+        Status = gBS->CreateEvent(EVT_NOTIFY_SIGNAL, TPL_NOTIFY, AsyncIoCallback, Subtask, &Subtask->Event);
         if (EFI_ERROR(Status)) {
             break;
         }
@@ -599,10 +590,10 @@ EFI_STATUS AsyncWriteSectors (
 
         CommandPacket->NvmeCmd->Flags = CDW10_VALID | CDW11_VALID | CDW12_VALID;
 
-        OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+        OldTpl = gBS->RaiseTPL(TPL_NOTIFY);
         InsertTailList (&Private->UnsubmittedSubtasks, &Subtask->Link);
         Request->UnsubmittedSubtaskNum++;
-        NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+        gBS->RestoreTPL(OldTpl);
 
         return EFI_SUCCESS;
     } while (0); // This 'loop' only runs once
@@ -614,7 +605,7 @@ EFI_STATUS AsyncWriteSectors (
 
     if (Subtask != NULL) {
         if (Subtask->Event != NULL) {
-            NVME_CALL_1_WRAPPER(gBS->CloseEvent, Subtask->Event);
+            gBS->CloseEvent(Subtask->Event);
         }
 
         FREE_NVME_POOL(Subtask);
@@ -666,9 +657,9 @@ NvmeAsyncRead (
     BlkIo2Req->Signature = NVME_BLKIO2_REQUEST_SIGNATURE;
     BlkIo2Req->Token     = Token;
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+    OldTpl = gBS->RaiseTPL(TPL_NOTIFY);
     InsertTailList (&Device->AsyncQueue, &BlkIo2Req->Link);
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
 
     InitializeListHead (&BlkIo2Req->SubtasksQueue);
 
@@ -707,7 +698,7 @@ NvmeAsyncRead (
         }
 
         if (EFI_ERROR(Status)) {
-            OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+            OldTpl  = gBS->RaiseTPL(TPL_NOTIFY);
             IsEmpty = IsListEmpty (&BlkIo2Req->SubtasksQueue) &&
             (BlkIo2Req->UnsubmittedSubtaskNum == 0);
 
@@ -726,7 +717,7 @@ NvmeAsyncRead (
                 BlkIo2Req->LastSubtaskSubmitted = TRUE;
             }
 
-            NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+            gBS->RestoreTPL(OldTpl);
 
             break;
         }
@@ -778,9 +769,9 @@ EFI_STATUS NvmeAsyncWrite (
     BlkIo2Req->Signature = NVME_BLKIO2_REQUEST_SIGNATURE;
     BlkIo2Req->Token     = Token;
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+    OldTpl = gBS->RaiseTPL(TPL_NOTIFY);
     InsertTailList (&Device->AsyncQueue, &BlkIo2Req->Link);
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
 
     InitializeListHead (&BlkIo2Req->SubtasksQueue);
 
@@ -820,7 +811,7 @@ EFI_STATUS NvmeAsyncWrite (
         }
 
         if (EFI_ERROR(Status)) {
-            OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+            OldTpl  = gBS->RaiseTPL(TPL_NOTIFY);
             IsEmpty = IsListEmpty (&BlkIo2Req->SubtasksQueue) &&
             (BlkIo2Req->UnsubmittedSubtaskNum == 0);
 
@@ -839,7 +830,7 @@ EFI_STATUS NvmeAsyncWrite (
                 BlkIo2Req->LastSubtaskSubmitted = TRUE;
             }
 
-            NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+            gBS->RestoreTPL(OldTpl);
 
             break;
         }
@@ -873,7 +864,7 @@ EFI_STATUS EFIAPI NvmeBlockIoReset (
     }
 
     // For Nvm Express subsystem, reset block device means reset controller.
-    OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl  = gBS->RaiseTPL(TPL_CALLBACK);
     Device  = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO (This);
     Private = Device->Controller;
 
@@ -882,7 +873,7 @@ EFI_STATUS EFIAPI NvmeBlockIoReset (
         Status = EFI_DEVICE_ERROR;
     }
 
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
 
     return Status;
 }
@@ -955,11 +946,11 @@ EFI_STATUS EFIAPI NvmeBlockIoReadBlocks (
         return EFI_INVALID_PARAMETER;
     }
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl = gBS->RaiseTPL(TPL_CALLBACK);
     Device = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO (This);
     Status = NvmeRead (Device, Buffer, Lba, NumberOfBlocks);
 
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
     return Status;
 }
 
@@ -1032,10 +1023,10 @@ EFI_STATUS EFIAPI NvmeBlockIoWriteBlocks (
         return EFI_INVALID_PARAMETER;
     }
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl = gBS->RaiseTPL(TPL_CALLBACK);
     Device = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO (This);
     Status = NvmeWrite (Device, Buffer, Lba, NumberOfBlocks);
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
 
     return Status;
 }
@@ -1064,10 +1055,10 @@ EFI_STATUS EFIAPI NvmeBlockIoFlushBlocks (
         return EFI_INVALID_PARAMETER;
     }
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl = gBS->RaiseTPL(TPL_CALLBACK);
     Device = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO (This);
     Status = NvmeFlush (Device);
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
 
     return Status;
 }
@@ -1104,26 +1095,26 @@ EFI_STATUS EFIAPI NvmeBlockIoResetEx (
 
     // Wait for the asynchronous PassThru queue to become empty.
     while (TRUE) {
-        OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+        OldTpl  = gBS->RaiseTPL(TPL_NOTIFY);
         IsEmpty = IsListEmpty (&Private->AsyncPassThruQueue) &&
         IsListEmpty (&Private->UnsubmittedSubtasks);
-        NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+        gBS->RestoreTPL(OldTpl);
 
         if (IsEmpty) {
             break;
         }
 
-        NVME_CALL_1_WRAPPER(gBS->Stall, 100);
+        gBS->Stall(100);
     }
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl = gBS->RaiseTPL(TPL_CALLBACK);
 
     Status = NvmeControllerInit (Private);
     if (EFI_ERROR (Status)) {
         Status = EFI_DEVICE_ERROR;
     }
 
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
 
     return Status;
 }
@@ -1199,7 +1190,7 @@ EFI_STATUS EFIAPI NvmeBlockIoReadBlocksEx (
     if (BufferSize == 0) {
         if ((Token != NULL) && (Token->Event != NULL)) {
             Token->TransactionStatus = EFI_SUCCESS;
-            NVME_CALL_1_WRAPPER(gBS->SignalEvent, Token->Event);
+            gBS->SignalEvent(Token->Event);
         }
         return EFI_SUCCESS;
     }
@@ -1219,7 +1210,7 @@ EFI_STATUS EFIAPI NvmeBlockIoReadBlocksEx (
         return EFI_INVALID_PARAMETER;
     }
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl = gBS->RaiseTPL(TPL_CALLBACK);
     Device = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO2 (This);
 
     if ((Token != NULL) && (Token->Event != NULL)) {
@@ -1230,7 +1221,7 @@ EFI_STATUS EFIAPI NvmeBlockIoReadBlocksEx (
         Status = NvmeRead (Device, Buffer, Lba, NumberOfBlocks);
     }
 
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
     return Status;
 }
 
@@ -1306,7 +1297,7 @@ EFI_STATUS EFIAPI NvmeBlockIoWriteBlocksEx (
     if (BufferSize == 0) {
         if ((Token != NULL) && (Token->Event != NULL)) {
             Token->TransactionStatus = EFI_SUCCESS;
-            NVME_CALL_1_WRAPPER(gBS->SignalEvent, Token->Event);
+            gBS->SignalEvent(Token->Event);
         }
         return EFI_SUCCESS;
     }
@@ -1326,7 +1317,7 @@ EFI_STATUS EFIAPI NvmeBlockIoWriteBlocksEx (
         return EFI_INVALID_PARAMETER;
     }
 
-    OldTpl = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_CALLBACK);
+    OldTpl = gBS->RaiseTPL(TPL_CALLBACK);
     Device = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO2 (This);
 
     if ((Token != NULL) && (Token->Event != NULL)) {
@@ -1337,7 +1328,7 @@ EFI_STATUS EFIAPI NvmeBlockIoWriteBlocksEx (
         Status = NvmeWrite (Device, Buffer, Lba, NumberOfBlocks);
     }
 
-    NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+    gBS->RestoreTPL(OldTpl);
     return Status;
 }
 
@@ -1382,21 +1373,21 @@ EFI_STATUS EFIAPI NvmeBlockIoFlushBlocksEx (
 
     // Wait for the asynchronous I/O queue to become empty.
     while (TRUE) {
-        OldTpl  = NVME_CALL_1_WRAPPER(gBS->RaiseTPL, TPL_NOTIFY);
+        OldTpl  = gBS->RaiseTPL(TPL_NOTIFY);
         IsEmpty = IsListEmpty (&Device->AsyncQueue);
-        NVME_CALL_1_WRAPPER(gBS->RestoreTPL, OldTpl);
+        gBS->RestoreTPL(OldTpl);
 
         if (IsEmpty) {
             break;
         }
 
-        NVME_CALL_1_WRAPPER(gBS->Stall, 100);
+        gBS->Stall(100);
     }
 
     // Signal caller event
     if ((Token != NULL) && (Token->Event != NULL)) {
         Token->TransactionStatus = EFI_SUCCESS;
-        NVME_CALL_1_WRAPPER(gBS->SignalEvent, Token->Event);
+        gBS->SignalEvent(Token->Event);
     }
 
     return EFI_SUCCESS;

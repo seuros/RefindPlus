@@ -1,117 +1,175 @@
-/*
- *  BootLog.c
- *
- *  Created by Slice  2011-08-19
- *  Edited by apianti 2012-09-08
- */
-/**
-** Modified for RefindPlus
-** Copyright (c) 2020-2025 Dayo Akanji (sf.net/u/dakanji/profile)
-**
-** THIS PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-** WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-**/
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+// SPDX-FileCopyrightText: 2020-2025 Dayo Akanji
+// SPDX-FileCopyrightText: 2011 Slice (Clover)
 
-#include "../../include/tiano_includes.h"
-#include "../../BootMaster/global.h"
+#include "tiano_includes.h"
+#include "global.h"
 #include "MemLogLib.h"
 
-#if REFIT_DEBUG > 0
-// DBG Build Only - START
+#include <Protocol/SerialIo.h>
+#include <Library/UefiBootServicesTableLib.h>
+
+#if MERIDIAN_DEBUG > 0
 
 #include <Protocol/SimpleFileSystem.h>
 #include <Protocol/LoadedImage.h>
 #include <Guid/FileInfo.h>
-#include <Library/UefiBootServicesTableLib.h>
-#include "../../BootMaster/lib.h"
-#include "../../BootMaster/screenmgt.h"
-#include "../../BootMaster/mystrings.h"
-#include "../../include/refit_call_wrapper.h"
+#include "lib.h"
+#include "screenmgt.h"
+#include "mystrings.h"
 
-#ifndef __MAKEWITH_GNUEFI
-#   define LibOpenRoot EfiLibOpenRoot
-#endif
+#define LibOpenRoot EfiLibOpenRoot
 
-extern  EFI_GUID  gEfiMiscSubClassGuid;
+extern EFI_GUID gEfiMiscSubClassGuid;
 
-extern  INT16  NowYear;
-extern  INT16  NowMonth;
-extern  INT16  NowDay;
-extern  INT16  NowHour;
-extern  INT16  NowMinute;
-extern  INT16  NowSecond;
+extern INT16 NowYear;
+extern INT16 NowMonth;
+extern INT16 NowDay;
+extern INT16 NowHour;
+extern INT16 NowMinute;
+extern INT16 NowSecond;
 
-CHAR16  *PadStr    = NULL;
-CHAR16  *gLogTemp  = NULL;
-CHAR16  *mDebugLog = NULL;
+CHAR16 *PadStr = NULL;
+CHAR16 *gLogTemp = NULL;
+CHAR16 *mDebugLog = NULL;
 
-BOOLEAN  TimeStamp =  TRUE;
-BOOLEAN  UseMsgLog = FALSE;
-BOOLEAN  DelMsgLog = FALSE;
+BOOLEAN TimeStamp = TRUE;
+BOOLEAN UseMsgLog = FALSE;
 
 EFI_FILE_PROTOCOL *mRootDir = NULL;
 
-static
-CHAR16 * GetAltMonth (VOID) {
+static CHAR16 *GetAltMonth(VOID)
+{
     CHAR16 *AltMonth;
 
     switch (NowMonth) {
-        case  1: AltMonth = L"b";  break;
-        case  2: AltMonth = L"c";  break;
-        case  3: AltMonth = L"f";  break;
-        case  4: AltMonth = L"h";  break;
-        case  5: AltMonth = L"j";  break;
-        case  6: AltMonth = L"k";  break;
-        case  7: AltMonth = L"n";  break;
-        case  8: AltMonth = L"p";  break;
-        case  9: AltMonth = L"r";  break;
-        case 10: AltMonth = L"t";  break;
-        case 11: AltMonth = L"v";  break;
-        default: AltMonth = L"x";
-    } // switch
+    case 1:
+        AltMonth = L"b";
+        break;
+    case 2:
+        AltMonth = L"c";
+        break;
+    case 3:
+        AltMonth = L"f";
+        break;
+    case 4:
+        AltMonth = L"h";
+        break;
+    case 5:
+        AltMonth = L"j";
+        break;
+    case 6:
+        AltMonth = L"k";
+        break;
+    case 7:
+        AltMonth = L"n";
+        break;
+    case 8:
+        AltMonth = L"p";
+        break;
+    case 9:
+        AltMonth = L"r";
+        break;
+    case 10:
+        AltMonth = L"t";
+        break;
+    case 11:
+        AltMonth = L"v";
+        break;
+    default:
+        AltMonth = L"x";
+    }
 
     return AltMonth;
-} // static CHAR16 * GetAltMonth()
+}
 
-static
-CHAR16 * GetAltHour (VOID) {
+static CHAR16 *GetAltHour(VOID)
+{
     CHAR16 *AltHour;
 
     switch (NowHour) {
-        case  0: AltHour = L"a";   break;
-        case  1: AltHour = L"b";   break;
-        case  2: AltHour = L"c";   break;
-        case  3: AltHour = L"d";   break;
-        case  4: AltHour = L"e";   break;
-        case  5: AltHour = L"f";   break;
-        case  6: AltHour = L"g";   break;
-        case  7: AltHour = L"h";   break;
-        case  8: AltHour = L"i";   break;
-        case  9: AltHour = L"j";   break;
-        case 10: AltHour = L"k";   break;
-        case 11: AltHour = L"m";   break;
-        case 12: AltHour = L"n";   break;
-        case 13: AltHour = L"p";   break;
-        case 14: AltHour = L"q";   break;
-        case 15: AltHour = L"r";   break;
-        case 16: AltHour = L"s";   break;
-        case 17: AltHour = L"t";   break;
-        case 18: AltHour = L"u";   break;
-        case 19: AltHour = L"v";   break;
-        case 20: AltHour = L"w";   break;
-        case 21: AltHour = L"x";   break;
-        case 22: AltHour = L"y";   break;
-        default: AltHour = L"z";
-    } // switch
+    case 0:
+        AltHour = L"a";
+        break;
+    case 1:
+        AltHour = L"b";
+        break;
+    case 2:
+        AltHour = L"c";
+        break;
+    case 3:
+        AltHour = L"d";
+        break;
+    case 4:
+        AltHour = L"e";
+        break;
+    case 5:
+        AltHour = L"f";
+        break;
+    case 6:
+        AltHour = L"g";
+        break;
+    case 7:
+        AltHour = L"h";
+        break;
+    case 8:
+        AltHour = L"i";
+        break;
+    case 9:
+        AltHour = L"j";
+        break;
+    case 10:
+        AltHour = L"k";
+        break;
+    case 11:
+        AltHour = L"m";
+        break;
+    case 12:
+        AltHour = L"n";
+        break;
+    case 13:
+        AltHour = L"p";
+        break;
+    case 14:
+        AltHour = L"q";
+        break;
+    case 15:
+        AltHour = L"r";
+        break;
+    case 16:
+        AltHour = L"s";
+        break;
+    case 17:
+        AltHour = L"t";
+        break;
+    case 18:
+        AltHour = L"u";
+        break;
+    case 19:
+        AltHour = L"v";
+        break;
+    case 20:
+        AltHour = L"w";
+        break;
+    case 21:
+        AltHour = L"x";
+        break;
+    case 22:
+        AltHour = L"y";
+        break;
+    default:
+        AltHour = L"z";
+    }
 
     return AltHour;
-} // static CHAR16 * GetAltHour()
+}
 
-static
-CHAR16 * GetDateString (VOID) {
-    INT16    ourYear;
-    CHAR16  *ourMonth;
-    CHAR16  *ourHour;
+static CHAR16 *GetDateString(VOID)
+{
+    INT16 ourYear;
+    CHAR16 *ourMonth;
+    CHAR16 *ourHour;
 
     static CHAR16 *DateStr = NULL;
 
@@ -119,25 +177,21 @@ CHAR16 * GetDateString (VOID) {
         return DateStr;
     }
 
-    ourYear  = (NowYear % 100);
+    ourYear = (NowYear % 100);
     ourMonth = GetAltMonth();
-    ourHour  = GetAltHour();
+    ourHour = GetAltHour();
 
-    DateStr = PoolPrint(
-        L"%02d%s%02d%s%02d%02d",
-        ourYear, ourMonth,
-        NowDay, ourHour,
-        NowMinute, NowSecond
-    );
+    DateStr = PoolPrint(L"%02d%s%02d%s%02d%02d", ourYear, ourMonth, NowDay, ourHour, NowMinute,
+                        NowSecond);
 
     return DateStr;
-} // static CHAR16 * GetDateString()
+}
 
-static
-EFI_FILE_PROTOCOL * OpenLogFile (VOID) {
-    EFI_STATUS                    Status;
-    CHAR16                       *DateStr;
-    EFI_FILE_PROTOCOL            *LogProtocol;
+static EFI_FILE_PROTOCOL *OpenLogFile(VOID)
+{
+    EFI_STATUS Status;
+    CHAR16 *DateStr;
+    EFI_FILE_PROTOCOL *LogProtocol;
 
     if (mRootDir == NULL) {
         return NULL;
@@ -145,522 +199,347 @@ EFI_FILE_PROTOCOL * OpenLogFile (VOID) {
 
     if (mDebugLog == NULL) {
         DateStr = GetDateString();
-        mDebugLog = PoolPrint (
-            L"EFI\\%s.log", DateStr
-        );
-        MY_FREE_POOL(DateStr);
+
+        mDebugLog = PoolPrint(L"%s.log", DateStr);
+        MRD_FREE_POOL(DateStr);
     }
 
-    // Open log file from current root
-    Status = REFIT_CALL_5_WRAPPER(
-        mRootDir->Open, mRootDir,
-        &LogProtocol, mDebugLog,
-        RefitReadWrite, 0
-    );
+    Status = mRootDir->Open(mRootDir, &LogProtocol, mDebugLog, MeridianReadWrite, 0);
     if (Status == EFI_NOT_FOUND) {
-        // Try to create log file if not found
-        REFIT_CALL_5_WRAPPER(
-            mRootDir->Open, mRootDir,
-            &LogProtocol, mDebugLog,
-            RefitReadWriteCreate, 0
-        );
+
+        mRootDir->Open(mRootDir, &LogProtocol, mDebugLog, MeridianReadWriteCreate, 0);
     }
 
     return LogProtocol;
-} // static EFI_FILE_PROTOCOL * OpenLogFile()
+}
 
-static
-EFI_STATUS HandleDir (
-    EFI_FILE_PROTOCOL *Entity OPTIONAL
-) {
-    EFI_STATUS         Status;
+static EFI_STATUS HandleDir(EFI_FILE_PROTOCOL *Entity OPTIONAL)
+{
+    EFI_STATUS Status;
 
-    Status = REFIT_CALL_1_WRAPPER(
-        mRootDir->Close, mRootDir
-    );
+    Status = mRootDir->Close(mRootDir);
     if (Entity == NULL) {
         Status = EFI_NOT_READY;
     }
 
     return Status;
-} // static EFI_STATUS HandleDir()
+}
 
-static
-EFI_FILE_PROTOCOL * GetDebugLogFile (VOID) {
-    EFI_STATUS                    Status;
-    EFI_FILE_PROTOCOL            *LogProtocol;
-    EFI_LOADED_IMAGE_PROTOCOL    *LoadedImage;
+static EFI_FILE_PROTOCOL *GetDebugLogFile(VOID)
+{
+    EFI_STATUS Status;
+    EFI_FILE_PROTOCOL *LogProtocol;
+    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
 
-    // DA-TAG: Always get 'LoadedImage->DeviceHandle' each time
-    //         That is, do not use static
-    Status = REFIT_CALL_3_WRAPPER(
-        gBS->HandleProtocol, gImageHandle,
-        &gEfiLoadedImageProtocolGuid, (VOID **) &LoadedImage
-    );
-    if (EFI_ERROR(Status) ||
-        LoadedImage->DeviceHandle == NULL
-    ) {
+    Status = gBS->HandleProtocol(gImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **)&LoadedImage);
+    if (EFI_ERROR(Status) || LoadedImage->DeviceHandle == NULL) {
         return NULL;
     }
 
-    // DA-TAG: Always get 'mRootDir' each time
-    //
-    // Get mRootDir from the device we are loaded from
-    mRootDir = LibOpenRoot (
-        LoadedImage->DeviceHandle
-    );
+    mRootDir = LibOpenRoot(LoadedImage->DeviceHandle);
     if (mRootDir != NULL) {
         LogProtocol = OpenLogFile();
-        Status = HandleDir (
-            LogProtocol
-        );
+        Status = HandleDir(LogProtocol);
     }
     else {
         Status = EFI_NOT_READY;
 
-        REFIT_CALL_2_WRAPPER(
-            gST->ConOut->SetAttribute,
-            gST->ConOut, ATTR_ERROR
-        );
-        PrintUglyText (
-            L"Default ESP for RefindPlus Debug Log Storage:- 'Not Ready'",
-            NEXTLINE
-        );
+        gST->ConOut->SetAttribute(gST->ConOut, ATTR_ERROR);
+        PrintUglyText(L"Default ESP for Meridian Debug Log Storage:- 'Not Ready'", NEXTLINE);
 
-        REFIT_CALL_2_WRAPPER(
-            gST->ConOut->SetAttribute,
-            gST->ConOut, ATTR_BASIC
-        );
-        PrintUglyText (
-            L"RefindPlus will now try other ESPs ... if available'",
-            NEXTLINE
-        );
-        PrintUglyText (
-            L"Debug log file, if created, *WILL NOT* be in the default ESP'",
-            NEXTLINE
-        );
+        gST->ConOut->SetAttribute(gST->ConOut, ATTR_BASIC);
+        PrintUglyText(L"Meridian will now try other ESPs ... if available'", NEXTLINE);
+        PrintUglyText(L"Debug log file, if created, *WILL NOT* be in the default ESP'", NEXTLINE);
 
-        PauseSeconds (4);
+        PauseSeconds(4);
     }
 
     if (EFI_ERROR(Status)) {
-        // Try first ESP found
+
         mRootDir = NULL;
-        Status = egFindESP (
-            &mRootDir
-        );
+        Status = MrdFindESP(&mRootDir);
         if (!EFI_ERROR(Status)) {
             LogProtocol = OpenLogFile();
-            Status = HandleDir (
-                LogProtocol
-            );
+            Status = HandleDir(LogProtocol);
         }
 
         if (EFI_ERROR(Status)) {
             mRootDir = LogProtocol = NULL;
 
-            REFIT_CALL_2_WRAPPER(
-                gST->ConOut->SetAttribute,
-                gST->ConOut, ATTR_ERROR
-            );
-            PrintUglyText (
-                L"Alernative ESP for RefindPlus Debug Log Storage:- 'Not Ready'",
-                NEXTLINE
-            );
+            gST->ConOut->SetAttribute(gST->ConOut, ATTR_ERROR);
+            PrintUglyText(L"Alernative ESP for Meridian Debug Log Storage:- 'Not Ready'", NEXTLINE);
 
-            REFIT_CALL_2_WRAPPER(
-                gST->ConOut->SetAttribute,
-                gST->ConOut, ATTR_BASIC
-            );
-            PrintUglyText (
-                L"RefindPlus *WILL NOT* create a debug log file",
-                NEXTLINE
-            );
+            gST->ConOut->SetAttribute(gST->ConOut, ATTR_BASIC);
+            PrintUglyText(L"Meridian *WILL NOT* create a debug log file", NEXTLINE);
 
-            PauseSeconds (4);
+            PauseSeconds(4);
         }
     }
 
     return LogProtocol;
-} // static EFI_FILE_PROTOCOL * GetDebugLogFile()
+}
 
-static
-VOID SaveMessageToDebugLogFile (
-    IN CHAR8 *LastMessage
-) {
-    EFI_STATUS        Status;
-    UINTN             TextLen;
-    CHAR8            *Text;
-    EFI_FILE_INFO    *Info;
-    EFI_FILE_HANDLE   LogFile;
+static VOID SaveMessageToDebugLogFile(IN CHAR8 *LastMessage)
+{
+    UINTN TextLen;
+    CHAR8 *Text;
+    EFI_FILE_INFO *Info;
+    EFI_FILE_HANDLE LogFile;
 
     static BOOLEAN FirstTimeSave = FALSE;
 
-    // Get/Open Logfile
     LogFile = GetDebugLogFile();
     if (LogFile == NULL) {
         return;
     }
 
-    if (GlobalConfig.LogLevel < LOGLEVELMIN) {
-        // DA-TAG: Undocumented feature
-        //         Allows using DEBUG build without logging
-        //         Set 'log-level' to negative value to activate
-        // Delete Logfile on invalid log level
-        Status = REFIT_CALL_5_WRAPPER(
-            mRootDir->Open, mRootDir,
-            &LogFile, mDebugLog,
-            RefitReadWrite, 0
-        );
-        if (!EFI_ERROR(Status)) {
-            Status = REFIT_CALL_1_WRAPPER(
-                LogFile->Delete, LogFile
-            );
-            if (!EFI_ERROR(Status)) {
-                REFIT_CALL_1_WRAPPER(
-                    mRootDir->Close, mRootDir
-                );
-                DelMsgLog = TRUE;
-            }
-        }
-    }
-
-    if (DelMsgLog &&
-        GlobalConfig.LogLevel < LOGLEVELMIN
-    ) {
-        return;
-    }
-
-    // Get File Info for LogFile
-    Info = EfiLibFileInfo (
-        LogFile
-    );
+    Info = EfiLibFileInfo(LogFile);
     if (Info) {
-        // DA-TAG: Investigate This
-        //         'Softly' disable combining buffer
-        //         Review and make permanent later
-        //         Means removing 'FirstTimeSave'
-        //         Currently just set to 'FALSE'
-        //         Change to 'TRUE' if keeping
-        // Use whole buffer on 'FirstTimeSave'
-        Text = (FirstTimeSave)
-            ? GetMemLogBuffer()
-            : LastMessage;
-        TextLen = (FirstTimeSave)
-            ? GetMemLogLen()
-            : AsciiStrLen (LastMessage);
 
-        // Advance to EOF (Append Output)
-        LogFile->SetPosition (
-            LogFile,
-            Info->FileSize
-        );
+        Text = (FirstTimeSave) ? GetMemLogBuffer() : LastMessage;
+        TextLen = (FirstTimeSave) ? GetMemLogLen() : AsciiStrLen(LastMessage);
 
-        // Write message out
-        LogFile->Write (
-            LogFile,
-            &TextLen,
-            Text
-        );
+        LogFile->SetPosition(LogFile, Info->FileSize);
 
-        // Update 'FirstTimeSave'
+        LogFile->Write(LogFile, &TextLen, Text);
+
         FirstTimeSave = FALSE;
     }
 
-    // Close Logfile
-    LogFile->Close (LogFile);
-} // static VOID SaveMessageToDebugLogFile()
+    LogFile->Close(LogFile);
+}
 
-VOID WayPointer (
-    IN CHAR16 *Msg
-) {
-    UINTN LogLineType;
-    UINTN TmpLogLevelStore;
+VOID WayPointer(IN CHAR16 *Msg)
+{
 
-    // Abort if Kernel has started
     if (gKernelStarted) {
         return;
     }
 
-    // Abort if no Message
     if (Msg == NULL) {
         return;
     }
 
-    // Stash and swap LogLevel
-    // Needed to force DeepLogger on LogLevel 0
-    TmpLogLevelStore = GlobalConfig.LogLevel;
-    if (GlobalConfig.LogLevel < 1) {
-        GlobalConfig.LogLevel = 1;
-    }
+    gLogTemp = StrDuplicate(Msg);
+    DeepLoggger(1, LOG_LINE_BASE, &gLogTemp);
+    DEBUG_LOG(1, LOG_BLANK_LINE_SEP, L"X");
+}
 
-    // Call DeepLogger
-    gLogTemp = StrDuplicate (Msg);
-    LogLineType = (
-        TmpLogLevelStore == 0
-    ) ? LOG_LINE_EXIT : LOG_LINE_BASE;
+VOID DeepLoggger(IN INTN level, IN INTN type, IN CHAR16 **Msg)
+{
+    CHAR8 *FormatMsg;
+    CHAR16 *Tmp;
+    CHAR16 *OurPad;
+#if MERIDIAN_DEBUG < 2
+    UINTN Limit;
+    CHAR16 *StoreMsg;
+    BOOLEAN LongStr;
+#endif
 
-    DeepLoggger (
-        1,
-        LogLineType,
-        &gLogTemp
-    );
-    if (TmpLogLevelStore != 0) {
-        ALT_LOG(1, LOG_BLANK_LINE_SEP, L"X");
-    }
-
-    // Restore LogLevel if changed
-    GlobalConfig.LogLevel = TmpLogLevelStore;
-} // VOID WayPointer()
-
-VOID DeepLoggger (
-    IN INTN     level,
-    IN INTN     type,
-    IN CHAR16 **Msg
-) {
-    UINTN    Limit;
-    CHAR8   *FormatMsg;
-    CHAR16  *Tmp;
-    CHAR16  *OurPad;
-    CHAR16  *StoreMsg;
-    BOOLEAN  LongStr;
-    BOOLEAN  EarlyReturn;
-    BOOLEAN  CheckReturn;
-
+    (VOID) level;
 
     if (*Msg == NULL) {
         return;
     }
 
-    // Ensure we are allowed to write logs
-    EarlyReturn = (
-        REFIT_DEBUG <= LOGLEVELMIN           ||
-        GlobalConfig.LogLevel < level        ||
-        GlobalConfig.LogLevel == LOGLEVELMIN ||
-        (
-            DelMsgLog &&
-            GlobalConfig.LogLevel < LOGLEVELMIN
-        ) || (
-            type != LOG_LINE_FORENSIC &&
-            (MuteLogger || NativeLogger)
-        )
-    );
-
-    CheckReturn = (
-        MuteLogger              ||
-        type != LOG_BLOCK_SEP   ||
-        REFIT_DEBUG <= LOGLEVELMAX
-    );
-
-    if (EarlyReturn && CheckReturn) {
-        MY_FREE_POOL(*Msg);
+    if (type != LOG_LINE_FORENSIC && (MuteLogger || NativeLogger)) {
+        MRD_FREE_POOL(*Msg);
 
         return;
     }
 
-    OurPad = (
-        PadStr != NULL
-    ) ? PadStr : L"[ ";
+    OurPad = (PadStr != NULL) ? PadStr : L"[ ";
 
-    // Truncate message at LOGLEVELMAX and lower (if required)
-    if (GlobalConfig.LogLevel <= LOGLEVELMAX) {
-        Limit   = 426;
-        LongStr = TruncateString (
-            *Msg, Limit
-        );
+#if MERIDIAN_DEBUG < 2
 
-        StoreMsg = StrDuplicate (
-            *Msg
-        );
-        MY_FREE_POOL(*Msg);
-        *Msg = (LongStr)
-            ? PoolPrint (L"%s ... Snipped!!", StoreMsg)
-            : StrDuplicate (StoreMsg);
-        MY_FREE_POOL(StoreMsg);
-    }
+    Limit = 426;
+    LongStr = TruncateString(*Msg, Limit);
 
-    // Disable Timestamp
+    StoreMsg = StrDuplicate(*Msg);
+    MRD_FREE_POOL(*Msg);
+    *Msg = (LongStr) ? PoolPrint(L"%s ... Snipped!!", StoreMsg) : StrDuplicate(StoreMsg);
+    MRD_FREE_POOL(StoreMsg);
+#endif
+
     TimeStamp = FALSE;
 
     switch (type) {
-        case LOG_BLOCK_SEP:
-        case LOG_BLANK_LINE_SEP: Tmp = StrDuplicate (L"\n");                                                      break;
-        case LOG_BLANK_LINE_TWO: Tmp = StrDuplicate (L"\n\n");                                                    break;
-        case LOG_STAR_SEPARATOR: Tmp = PoolPrint (L"\n\n* ** ** *** *** ***[ %s ]*** *** *** ** ** *\n\n", *Msg); break;
-        case LOG_LINE_SEPARATOR: Tmp = PoolPrint (L"\n===================[ %s ]===================\n\n",   *Msg); break;
-        case LOG_THREE_STAR_SEP: Tmp = PoolPrint (L"\n*** *** --- --- ---[ %s ]--- --- --- *** ***\n",     *Msg); break;
-        case LOG_LINE_THIN_SEP:  Tmp = PoolPrint (L"\n    ------- - - - -[ %s ]- - - - -------\n",         *Msg); break;
-        case LOG_STAR_HEAD_SEP:  Tmp = PoolPrint (L"\n           * ** ***[ %s ]*** ** *\n",                *Msg); break;
-        case LOG_STAR_HEAD_SEPX: Tmp = PoolPrint (L"           * ** ***[ %s ]*** ** *\n",                  *Msg); break;
-        case LOG_THREE_STAR_END: Tmp = PoolPrint (L"        *** *** ***[ %s ]*** *** ***\n\n",             *Msg); break;
-        case LOG_THREE_STAR_MID: Tmp = PoolPrint (L"                ***[ %s\n",                            *Msg); break;
-        case LOG_LINE_FORENSIC:  Tmp = PoolPrint (L"            !!! ---%s%s\n",                    OurPad, *Msg); break;
-        case LOG_LINE_SPECIAL:   Tmp = PoolPrint (L"\n                   %s",                              *Msg); break;
-        case LOG_LINE_SAME:      Tmp = PoolPrint (L"%s",                                                   *Msg); break;
-        case LOG_LINE_EXIT:      Tmp = PoolPrint (L"\n%s\n\n",                                             *Msg); break;
-        case LOG_LINE_BASE:      Tmp = PoolPrint (L"%s\n",                                                 *Msg); break;
-        default:                 Tmp = PoolPrint (L"%s\n",                                                 *Msg);
-            // Should be 'LOG_LINE_NORMAL' ... Using 'default' to catch coding errors
-            // Enable Timestamp for this
-            TimeStamp = TRUE;
-    } // switch
+    case LOG_BLOCK_SEP:
+    case LOG_BLANK_LINE_SEP:
+        Tmp = StrDuplicate(L"\n");
+        break;
+    case LOG_BLANK_LINE_TWO:
+        Tmp = StrDuplicate(L"\n\n");
+        break;
+    case LOG_STAR_SEPARATOR:
+        Tmp = PoolPrint(L"\n\n* ** ** *** *** ***[ %s ]*** *** *** ** ** *\n\n", *Msg);
+        break;
+    case LOG_LINE_SEPARATOR:
+        Tmp = PoolPrint(L"\n===================[ %s ]===================\n\n", *Msg);
+        break;
+    case LOG_THREE_STAR_SEP:
+        Tmp = PoolPrint(L"\n*** *** --- --- ---[ %s ]--- --- --- *** ***\n", *Msg);
+        break;
+    case LOG_LINE_THIN_SEP:
+        Tmp = PoolPrint(L"\n    ------- - - - -[ %s ]- - - - -------\n", *Msg);
+        break;
+    case LOG_STAR_HEAD_SEP:
+        Tmp = PoolPrint(L"\n           * ** ***[ %s ]*** ** *\n", *Msg);
+        break;
+    case LOG_STAR_HEAD_SEPX:
+        Tmp = PoolPrint(L"           * ** ***[ %s ]*** ** *\n", *Msg);
+        break;
+    case LOG_THREE_STAR_END:
+        Tmp = PoolPrint(L"        *** *** ***[ %s ]*** *** ***\n\n", *Msg);
+        break;
+    case LOG_THREE_STAR_MID:
+        Tmp = PoolPrint(L"                ***[ %s\n", *Msg);
+        break;
+    case LOG_LINE_FORENSIC:
+        Tmp = PoolPrint(L"            !!! ---%s%s\n", OurPad, *Msg);
+        break;
+    case LOG_LINE_SPECIAL:
+        Tmp = PoolPrint(L"\n                   %s", *Msg);
+        break;
+    case LOG_LINE_SAME:
+        Tmp = PoolPrint(L"%s", *Msg);
+        break;
+    case LOG_LINE_EXIT:
+        Tmp = PoolPrint(L"\n%s\n\n", *Msg);
+        break;
+    case LOG_LINE_BASE:
+        Tmp = PoolPrint(L"%s\n", *Msg);
+        break;
+    default:
+        Tmp = PoolPrint(L"%s\n", *Msg);
 
-    FormatMsg = AllocatePool (
-        (StrLen (Tmp) + 1) * sizeof (CHAR8)
-    );
+        TimeStamp = TRUE;
+    }
+
+    FormatMsg = AllocatePool((StrLen(Tmp) + 1) * sizeof(CHAR8));
     if (FormatMsg != NULL) {
-        // Use Native Logging
+
         UseMsgLog = TRUE;
 
-        // Write the Message String to File
-        UnicodeStrToAsciiStr (
-            Tmp,
-            FormatMsg
-        );
-        DebugLog (
-            (const CHAR8 *) FormatMsg
-        );
-        MY_FREE_POOL(FormatMsg);
+        UnicodeStrToAsciiStrS(Tmp, FormatMsg, StrLen(Tmp) + 1);
+        DebugLog((const CHAR8 *)FormatMsg);
+        MRD_FREE_POOL(FormatMsg);
 
-        // Disable Native Logging
         UseMsgLog = FALSE;
     }
 
-    MY_FREE_POOL(Tmp);
-    MY_FREE_POOL(*Msg);
-} // VOID DeepLoggger()
+    MRD_FREE_POOL(Tmp);
+    MRD_FREE_POOL(*Msg);
+}
 
-VOID EFIAPI DebugLog (
-    IN const CHAR8 *FormatString,
-    ...
-) {
-    // Abort if Kernel has started
+VOID EFIAPI DebugLog(IN const CHAR8 *FormatString, ...)
+{
+
     if (gKernelStarted) {
         return;
     }
 
-    // Ensure we are allowed to write logs
-    if (MuteLogger           ||
-        REFIT_DEBUG < 1      ||
-        FormatString == NULL ||
-        (
-            DelMsgLog &&
-            GlobalConfig.LogLevel < LOGLEVELMIN
-        )
-    ) {
+    if (MuteLogger || MERIDIAN_DEBUG < 1 || FormatString == NULL) {
         return;
     }
 
-    // Abort on higher log levels if not forcing
     if (!UseMsgLog) {
         UseMsgLog = NativeLogger;
-
-        if (!UseMsgLog &&
-            GlobalConfig.LogLevel > LOGLEVELMIN
-        ) {
-            return;
-        }
     }
 
-    // Print message to log buffer
     VA_LIST Marker;
     VA_START(Marker, FormatString);
-    MemLogVA (
-        TimeStamp, REFIT_DEBUG,
-        FormatString, Marker
-    );
+    MemLogVA(TimeStamp, MERIDIAN_DEBUG, FormatString, Marker);
     VA_END(Marker);
 
     TimeStamp = TRUE;
-} // VOID EFIAPI DebugLog()
+}
 
-VOID LogPadding (
-    BOOLEAN Increment
-) {
+VOID LogPadding(BOOLEAN Increment)
+{
     CHAR16 *TmpPad;
-    UINTN   PadPos;
+    UINTN PadPos;
 
-
-    // Abort if Kernel has started
     if (gKernelStarted) {
         return;
     }
 
-    // Abort on MuteLogger
     if (MuteLogger) {
         return;
     }
 
     if (PadStr == NULL) {
-        PadStr = StrDuplicate (
-            L"[ "
-        );
+        PadStr = StrDuplicate(L"[ ");
 
-        // Early Return
         return;
     }
 
-    TmpPad = StrDuplicate (PadStr);
-    PadPos = StrLen (PadStr);
-    MY_FREE_POOL(PadStr);
+    TmpPad = StrDuplicate(PadStr);
+    PadPos = StrLen(PadStr);
+    MRD_FREE_POOL(PadStr);
 
     if (Increment == TRUE) {
-        PadStr = (
-            NativeLogger
-        ) ? StrDuplicate (
-            TmpPad
-        ) : PoolPrint (
-            L"%s. ",
-            TmpPad
-        );
+        PadStr = (NativeLogger) ? StrDuplicate(TmpPad) : PoolPrint(L"%s. ", TmpPad);
     }
     else {
         if (NativeLogger) {
-            PadStr = StrDuplicate (
-                TmpPad
-            );
+            PadStr = StrDuplicate(TmpPad);
         }
         else {
             PadPos -= 2;
             if (PadPos < 3) {
-                PadStr = StrDuplicate (
-                    L"[ "
-                );
+                PadStr = StrDuplicate(L"[ ");
             }
             else {
                 TmpPad[PadPos] = L'\0';
-                PadStr = StrDuplicate (
-                    TmpPad
-                );
+                PadStr = StrDuplicate(TmpPad);
             }
         }
     }
 
-    MY_FREE_POOL(TmpPad);
-} // VOID LogPadding()
+    MRD_FREE_POOL(TmpPad);
+}
 
-// DBG Build Only - END
 #endif
 
-// DA-TAG: Allow REL Build to access this ... Without output
-static
-VOID EFIAPI MemLogCallback (
-    IN INTN   DebugMode,
-    IN CHAR8 *LastMessage
-) {
-    #if REFIT_DEBUG > 0
-    if (DebugMode >= 1) {
-        SaveMessageToDebugLogFile (
-            LastMessage
-        );
+static EFI_SERIAL_IO_PROTOCOL *gMrdSerialIo = NULL;
+static BOOLEAN gMrdSerialChkd = FALSE;
+
+static VOID MirrorToSerial(IN CHAR8 *Msg)
+{
+    UINTN Len;
+
+    if (Msg == NULL || !GlobalConfig.LogToSerial) {
+        return;
     }
-    #endif
+    if (!gMrdSerialChkd) {
+        gMrdSerialChkd = TRUE;
+        if (EFI_ERROR(
+                gBS->LocateProtocol(&gEfiSerialIoProtocolGuid, NULL, (VOID **)&gMrdSerialIo))) {
+            gMrdSerialIo = NULL;
+        }
+    }
+    if (gMrdSerialIo == NULL) {
+        return;
+    }
+    Len = AsciiStrLen(Msg);
+    if (Len == 0) {
+        return;
+    }
+    gMrdSerialIo->Write(gMrdSerialIo, &Len, Msg);
+}
+
+static VOID EFIAPI MemLogCallback(IN INTN DebugMode, IN CHAR8 *LastMessage)
+{
+    MirrorToSerial(LastMessage);
+
+#if MERIDIAN_DEBUG > 0
+    if (DebugMode >= 1) {
+        SaveMessageToDebugLogFile(LastMessage);
+    }
+#endif
 
     return;
-} // static VOID EFIAPI MemLogCallback()
+}
 
-VOID InitBooterLog (VOID) {
-    SetMemLogCallback (
-        MemLogCallback
-    );
-} // VOID InitBooterLog()
+VOID InitBooterLog(VOID) { SetMemLogCallback(MemLogCallback); }

@@ -14,7 +14,6 @@
 **/
 
 #include "NvmExpress.h"
-#include "nvme_call_wrapper.h"
 
 #define NVME_SHUTDOWN_PROCESS_TIMEOUT 45
 
@@ -326,7 +325,7 @@ EFI_STATUS NvmeDisableController (
     }
 
     for(Index = (Timeout * 500); Index != 0; --Index) {
-        NVME_CALL_1_WRAPPER(gBS->Stall, 1000);
+        gBS->Stall(1000);
 
         // Check if the controller is initialized
         Status = ReadNvmeControllerStatus (Private, &Csts);
@@ -391,7 +390,7 @@ EFI_STATUS NvmeEnableController (
     }
 
     for (Index = (Timeout * 500); Index != 0; --Index) {
-        NVME_CALL_1_WRAPPER(gBS->Stall, 1000);
+        gBS->Stall(1000);
 
         //
         // Check if the controller is initialized
@@ -572,10 +571,7 @@ EFI_STATUS NvmeCreateIoCompletionQueue (
         CrIoCq.Qid   = Index;
         CrIoCq.Qsize = QueueSize;
         CrIoCq.Pc    = 1;
-        NVME_CALL_3_WRAPPER(
-            gBS->CopyMem, &CommandPacket.NvmeCmd->Cdw10,
-            &CrIoCq, sizeof (NVME_ADMIN_CRIOCQ)
-        );
+        gBS->CopyMem(&CommandPacket.NvmeCmd->Cdw10, &CrIoCq, sizeof (NVME_ADMIN_CRIOCQ));
         CommandPacket.NvmeCmd->Flags = CDW10_VALID | CDW11_VALID;
 
         Status = Private->Passthru.PassThru (
@@ -650,10 +646,7 @@ EFI_STATUS NvmeCreateIoSubmissionQueue (
         CrIoSq.Pc    = 1;
         CrIoSq.Cqid  = Index;
         CrIoSq.Qprio = 0;
-        NVME_CALL_3_WRAPPER(
-            gBS->CopyMem, &CommandPacket.NvmeCmd->Cdw10,
-            &CrIoSq, sizeof (NVME_ADMIN_CRIOSQ)
-        );
+        gBS->CopyMem(&CommandPacket.NvmeCmd->Cdw10, &CrIoSq, sizeof (NVME_ADMIN_CRIOSQ));
         CommandPacket.NvmeCmd->Flags = CDW10_VALID | CDW11_VALID;
 
         Status = Private->Passthru.PassThru (
@@ -843,14 +836,8 @@ EFI_STATUS NvmeControllerInit (
     }
 
     // Dump NvmExpress Identify Controller Data
-    NVME_CALL_3_WRAPPER(
-        gBS->CopyMem, Sn,
-        Private->ControllerData->Sn, sizeof (Private->ControllerData->Sn)
-    );
-    NVME_CALL_3_WRAPPER(
-        gBS->CopyMem, Mn,
-        Private->ControllerData->Mn, sizeof (Private->ControllerData->Mn)
-    );
+    gBS->CopyMem(Sn, Private->ControllerData->Sn, sizeof (Private->ControllerData->Sn));
+    gBS->CopyMem(Mn, Private->ControllerData->Mn, sizeof (Private->ControllerData->Mn));
 
     // Create two I/O completion queues.
     // One for blocking I/O, one for non-blocking I/O.
@@ -900,20 +887,13 @@ VOID EFIAPI NvmeShutdownAllControllers (
     UINTN                                Index;
     NVME_CONTROLLER_PRIVATE_DATA        *Private;
 
-    Status = NVME_CALL_5_WRAPPER(
-        gBS->LocateHandleBuffer, ByProtocol,
-        &gEfiPciIoProtocolGuid, NULL,
-        &HandleCount, &Handles
-    );
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiPciIoProtocolGuid, NULL, &HandleCount, &Handles);
     if (EFI_ERROR (Status)) {
         HandleCount = 0;
     }
 
     for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
-        Status = NVME_CALL_4_WRAPPER(
-            gBS->OpenProtocolInformation, Handles[HandleIndex],
-            &gEfiPciIoProtocolGuid, &OpenInfos, &OpenInfoCount
-        );
+        Status = gBS->OpenProtocolInformation(Handles[HandleIndex], &gEfiPciIoProtocolGuid, &OpenInfos, &OpenInfoCount);
         if (EFI_ERROR (Status)) {
             continue;
         }
@@ -923,11 +903,7 @@ VOID EFIAPI NvmeShutdownAllControllers (
             // gImageHandle equals to DriverBinding handle for this driver.
             if (((OpenInfos[OpenInfoIndex].Attributes & EFI_OPEN_PROTOCOL_BY_DRIVER) != 0) &&
             (OpenInfos[OpenInfoIndex].AgentHandle == gImageHandle)) {
-                Status = NVME_CALL_6_WRAPPER(
-                    gBS->OpenProtocol, OpenInfos[OpenInfoIndex].ControllerHandle,
-                    &gEfiNvmExpressPassThruProtocolGuid, (VOID **) &NvmePassThru,
-                    NULL, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                );
+                Status = gBS->OpenProtocol(OpenInfos[OpenInfoIndex].ControllerHandle, &gEfiNvmExpressPassThruProtocolGuid, (VOID **) &NvmePassThru, NULL, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
                 if (EFI_ERROR (Status)) {
                     continue;
                 }
@@ -959,7 +935,7 @@ VOID EFIAPI NvmeShutdownAllControllers (
                     }
 
                     // Stall for ~10ms
-                    NVME_CALL_1_WRAPPER(gBS->Stall, 9999);
+                    gBS->Stall(9999);
                 }
             }
         }
@@ -977,10 +953,7 @@ VOID NvmeRegisterShutdownNotification (VOID) {
 
     mNvmeControllerNumber++;
     if (mNvmeControllerNumber == 1) {
-        Status = NVME_CALL_3_WRAPPER(
-            gBS->LocateProtocol, &gEfiResetNotificationProtocolGuid,
-            NULL, (VOID **) &ResetNotify
-        );
+        Status = gBS->LocateProtocol(&gEfiResetNotificationProtocolGuid, NULL, (VOID **) &ResetNotify);
         if (!EFI_ERROR (Status)) {
             ResetNotify->RegisterResetNotify (ResetNotify, NvmeShutdownAllControllers);
         }
@@ -998,10 +971,7 @@ VOID NvmeUnregisterShutdownNotification (VOID) {
 
     mNvmeControllerNumber--;
     if (mNvmeControllerNumber == 0) {
-        Status = NVME_CALL_3_WRAPPER(
-            gBS->LocateProtocol, &gEfiResetNotificationProtocolGuid,
-            NULL, (VOID **) &ResetNotify
-        );
+        Status = gBS->LocateProtocol(&gEfiResetNotificationProtocolGuid, NULL, (VOID **) &ResetNotify);
         if (!EFI_ERROR (Status)) {
             ResetNotify->UnregisterResetNotify (ResetNotify, NvmeShutdownAllControllers);
         }

@@ -14,7 +14,6 @@
 **/
 
 #include "NvmExpress.h"
-#include "nvme_call_wrapper.h"
 
 // EFI Component Name Protocol
 GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME_PROTOCOL gNvmExpressComponentName = {
@@ -195,11 +194,7 @@ EFI_STATUS EFIAPI NvmExpressComponentNameGetControllerName (
         }
 
         // Get the child context
-        Status = NVME_CALL_6_WRAPPER(
-            gBS->OpenProtocol, ChildHandle,
-            &gEfiBlockIoProtocolGuid, (VOID **) &BlockIo,
-            gNvmExpressDriverBinding.DriverBindingHandle, ChildHandle, EFI_OPEN_PROTOCOL_GET_PROTOCOL
-        );
+        Status = gBS->OpenProtocol(ChildHandle, &gEfiBlockIoProtocolGuid, (VOID **) &BlockIo, gNvmExpressDriverBinding.DriverBindingHandle, ChildHandle, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
         if (EFI_ERROR (Status)) {
             return EFI_UNSUPPORTED;
         }
