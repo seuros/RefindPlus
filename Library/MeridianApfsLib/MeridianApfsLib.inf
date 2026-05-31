@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+# SPDX-FileCopyrightText: 2020-2026 Dayo Akanji
+# SPDX-FileCopyrightText: 2019-2021 Acidanthera (OpenCore OcApfsLib, BSD-3-Clause)
+
 ## @file
 #
 # Component description file for the library producing the Apple Event protocol.
@@ -20,11 +25,11 @@
 
 [Defines]
     INF_VERSION    = 0x00010005
-    BASE_NAME      = RP_ApfsLib
+    BASE_NAME      = MeridianApfsLib
     FILE_GUID      = CD8EE15C-EAAF-44F4-8D07-8C37A4B53315
     MODULE_TYPE    = DXE_DRIVER
     VERSION_STRING = 1.0
-    LIBRARY_CLASS  = RP_ApfsLib|DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_DRIVER UEFI_APPLICATION DXE_SMM_DRIVER
+    LIBRARY_CLASS  = MeridianApfsLib|DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_DRIVER UEFI_APPLICATION DXE_SMM_DRIVER
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -33,18 +38,18 @@
 #
 
 [Sources]
-    RP_ApfsConnect.c
-    RP_ApfsFusion.c
-    RP_ApfsInternal.h
-    RP_ApfsIo.c
-    RP_ApfsLib.c
+    MeridianApfsConnect.c
+    MeridianApfsFusion.c
+    MeridianApfsInternal.h
+    MeridianApfsIo.c
+    MeridianApfsLib.c
 
 [Packages]
-    OpenCorePkg/OpenCorePkg.dec
     MdePkg/MdePkg.dec
+    MdeModulePkg/MdeModulePkg.dec
+    MeridianPkg/MeridianPkg.dec
 
 [Guids]
-    gAppleApfsPartitionTypeGuid                     ## GUID CONSUMES
 
 [Protocols]
     gEfiBlockIoProtocolGuid                         ## PROTOCOL CONSUMES
@@ -60,11 +65,9 @@
     BaseMemoryLib
     DebugLib
     DevicePathLib
-    OcConsoleLib
-    OcDriverConnectionLib
-    OcGuardLib
-    OcMiscLib
     MemoryAllocationLib
+    SafeIntLib
+    UefiBootManagerLib
     UefiBootServicesTableLib
     UefiLib
     UefiRuntimeServicesTableLib
