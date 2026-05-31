@@ -94,25 +94,10 @@ Program (C source code and script) files:
   NB: RefindPlPkg.dec and RefindPkg.dsc are named 'RefindPlusPkg.dec' and
   'RefindPlusPkg.dsc' respectively in RefindPlus
 
-Icons and graphics:
--------------------
+Graphics and splash art:
+------------------------
 
-* Most icons are derived from the AwOken icon set, version 2.5, by
-  Alessandro Roncone (aka alecive); see
-  http://alecive.deviantart.com/art/AwOken-163570862. Many of these icons
-  have been scaled or altered in color from their original forms.
-
-* The Debian icon is based on the SVG available from
-  https://commons.wikimedia.org/wiki/File:Debian-OpenLogo.svg. I,
-  Roderick W. Smith, modified it to fit the general style set by the AwOken icons.
-
-* The Elementary OS icon is based on the SVG available from
-  https://commons.wikimedia.org/wiki/File:Elementary_logo.svg. I,
-  Roderick W. Smith, modified it to fit the general style set by the AwOken icons.
-
-* Erik Kemperman provided the original (pre-0.9.3) rEFInd icon, which is a
-  combination of the common refresh/reload icon and the search/find icon.
-  For version 0.9.3, I, Roderick W. Smith, created a new icon from Erik's basic
-  design concept, but to match the AwOken flat-with-drop-shadow style.
-
-* Additional icons were created by me, Roderick W. Smith.
+* Meridian no longer ships the inherited rEFInd/RefindPlus icon tree. The
+  current Conn UI uses generated splash coverage planes from `conn/art/splash/`
+  and `conn/tools/bake_splash.py`, with per-file SPDX metadata in those source
+  assets.
