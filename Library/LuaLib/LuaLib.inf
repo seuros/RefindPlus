@@ -1,0 +1,79 @@
+## @file
+#  LuaLib - embedded Lua 5.4 interpreter for the Meridian UEFI image.
+#
+#  Lean, freestanding build: the Lua core runs on a small libc shim mapped to
+#  edk2 BaseLib (no StdLib/edk2-libc dependency), so it compiles under the
+#  default CLANGDWARF toolchain. Host filesystem/OS/math/package libraries are
+#  excluded; only sandbox-safe stdlibs plus the `meridian` host table.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = LuaLib
+    FILE_GUID      = 7C5E2A14-9B3D-4E6F-A1C2-5D8E0F3B6A47
+    MODULE_TYPE    = UEFI_APPLICATION
+    VERSION_STRING = 5.4.7
+    LIBRARY_CLASS  = LuaLib
+
+[Sources]
+    lua_meridian.c
+
+    # --- Lua 5.4 core (VM, parser, GC) ---
+    upstream/lapi.c
+    upstream/lcode.c
+    upstream/lctype.c
+    upstream/ldebug.c
+    upstream/ldo.c
+    upstream/ldump.c
+    upstream/lfunc.c
+    upstream/lgc.c
+    upstream/llex.c
+    upstream/lmem.c
+    upstream/lobject.c
+    upstream/lopcodes.c
+    upstream/lparser.c
+    upstream/lstate.c
+    upstream/lstring.c
+    upstream/ltable.c
+    upstream/ltm.c
+    upstream/lundump.c
+    upstream/lvm.c
+    upstream/lzio.c
+
+    # --- auxiliary + sandbox-safe standard libraries ---
+    upstream/lauxlib.c
+    upstream/lbaselib.c
+    upstream/lcorolib.c
+    upstream/ltablib.c
+    upstream/lstrlib.c
+    upstream/lmathlib.c
+
+    # --- freestanding C-runtime shim (maps to edk2 BaseLib / console) ---
+    shim/mlua_libc.c
+    shim/mlua_math.c
+    shim/mlua_printf.c
+    shim/mlua_strtod.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+    MeridianPkg/MeridianPkg.dec
+
+[LibraryClasses]
+    BaseLib
+    BaseMemoryLib
+    MemoryAllocationLib
+    UefiBootServicesTableLib
+    UefiLib
+
+[Protocols]
+    gEfiPciIoProtocolGuid                ## CONSUMES
+
+[BuildOptions]
+    # Vendored Lua is -Wall/-Werror clean against its own headers but trips
+    # edk2's stricter flag set; don't fail the image on upstream warnings.
+    # The shim headers (next to the sources) satisfy <string.h>/<math.h>/etc.
+    # under -nostdinc via edk2's automatic per-source-dir include path.
+    GCC:*_*_*_CC_FLAGS = -Wno-error -Wno-unused-parameter -Wno-sign-compare

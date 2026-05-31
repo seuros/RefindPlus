@@ -1,0 +1,29 @@
+## @file
+#  LuaTest - standalone UEFI app that exercises the embedded LuaLib under
+#  CLANGDWARF: creates a state, runs a script (print/arith/tables/string), and
+#  calls the meridian.pci_present host binding. Smoke test for path B.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+##
+
+[Defines]
+    INF_VERSION    = 0x00010006
+    BASE_NAME      = LuaTest
+    FILE_GUID      = 2B9F71C6-3A4D-4E18-9C2B-7F60A1D85E33
+    MODULE_TYPE    = UEFI_APPLICATION
+    VERSION_STRING = 1.0
+    ENTRY_POINT    = UefiMain
+
+[Sources]
+    lua_test.c
+
+[Packages]
+    MdePkg/MdePkg.dec
+    MeridianPkg/MeridianPkg.dec
+
+[LibraryClasses]
+    UefiApplicationEntryPoint
+    UefiLib
+    BaseLib
+    LuaLib
