@@ -27,6 +27,11 @@ HOST_PNG := host/shim.c host/main_png.c host/png.c host/scan_mock.c
 PNGBIN   := $(BUILD)/conn-host-png
 GOLD     := test/golden
 
+# ImageMagick 7 puts everything behind `magick`; ImageMagick 6, which is still
+# what most CI images ship, only has the bare tools. Accept either.
+MAGICK   := $(shell command -v magick 2>/dev/null)
+COMPARE  := $(if $(MAGICK),$(MAGICK) compare,compare)
+
 .PHONY: all clean render font splash test golden smoke uitest editlinetest listtest paneltest
 
 all: $(PNGBIN)
@@ -44,7 +49,7 @@ render-themes: $(PNGBIN)
 	@mkdir -p $(MEDIA)
 	@set -e; i=0; for n in atari pdp c64; do \
 	  $(PNGBIN) $(BUILD)/theme-$$n.png $$i >/dev/null; \
-	  magick $(BUILD)/theme-$$n.png -strip -colors 64 PNG8:$(MEDIA)/conn-$$n.png; \
+	  $(MAGICK) $(BUILD)/theme-$$n.png -strip -colors 64 PNG8:$(MEDIA)/conn-$$n.png; \
 	  echo "  $(MEDIA)/conn-$$n.png"; i=$$((i+1)); \
 	done
 
@@ -70,10 +75,10 @@ paneltest: | $(BUILD)
 
 test: $(PNGBIN) uitest editlinetest listtest paneltest
 	@$(PNGBIN) $(BUILD)/_test-crt.png >/dev/null
-	@if magick compare -metric AE $(BUILD)/_test-crt.png $(GOLD)/text-crt.png null: 2>/dev/null; then \
+	@if $(COMPARE) -metric AE $(BUILD)/_test-crt.png $(GOLD)/text-crt.png null: 2>/dev/null; then \
 	   echo "PASS  text-crt  (pixel-identical to golden)"; \
 	 else echo; echo "FAIL  text-crt  (differs from golden)"; \
-	   echo "  inspect: magick compare $(BUILD)/_test-crt.png $(GOLD)/text-crt.png /tmp/conn-diff.png"; \
+	   echo "  inspect: $(COMPARE) $(BUILD)/_test-crt.png $(GOLD)/text-crt.png /tmp/conn-diff.png"; \
 	   exit 1; fi
 
 golden: $(PNGBIN)

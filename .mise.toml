@@ -16,6 +16,10 @@ run = "./scripts/build.sh --target RELEASE"
 description = "Build Meridian for AArch64 (debug)"
 run = "./scripts/build.sh --arch AARCH64 --target DEBUG"
 
+[tasks.test]
+description = "Run the Conn engine unit tests and the golden-image regression"
+run = "make -C conn test"
+
 [tasks.clean]
 description = "Remove build artifacts"
 run = "rm -rf edk2/Build/Meridian"
@@ -54,3 +58,7 @@ run = "./scripts/check.sh"
 
 [tools]
 python = "3"
+# uv backs the pipx: tools below; without it mise has no installer for them.
+uv = "latest"
+"pipx:reuse" = "latest"
+"pipx:pre-commit" = "latest"

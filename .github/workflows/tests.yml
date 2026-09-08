@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
 
-name: Checks
+name: Tests
 
 on:
   pull_request:
@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  repository:
-    name: Repository Checks
+  conn:
+    name: Conn Engine
     runs-on: ubuntu-latest
     steps:
       # Bare owner/repo, never a full URL: GitHub reads a https:// ref as a
@@ -26,14 +26,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # The engine compiles against the real MdePkg headers, so EDK2 is a
+      # build input even for a host test. Shallow, and neither submodule needs
+      # its own submodules.
+      - name: Fetch header and state-machine submodules
+        run: git submodule update --init --depth 1 edk2 libstatemachines
+
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends imagemagick
+
       - name: Set up mise
         uses: jdx/mise-action@v2
 
-      - name: Run checks
-        run: mise run check
-
-      - name: Validate build wrapper
-        run: |
-          mkdir -p /tmp/meridian-edk2
-          ln -s "${GITHUB_WORKSPACE}" /tmp/meridian-edk2/MeridianPkg
-          ./scripts/build.sh --workspace /tmp/meridian-edk2 --dry-run
+      - name: Run tests
+        run: mise run test
