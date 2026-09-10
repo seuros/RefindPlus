@@ -85,6 +85,9 @@ run = "./scripts/check.sh"
 
 [tools]
 python = "3"
+clang = "22.1.8"
+"conda:lld" = "22.1.8"
+"conda:llvm-tools" = "22.1.8"
 # uv backs the pipx: tools below; without it mise has no installer for them.
 uv = "latest"
 "pipx:reuse" = "latest"
