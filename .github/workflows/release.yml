@@ -21,10 +21,7 @@ permissions:
   contents: read
 
 jobs:
-  # ── Open or merge the release PR ────────────────────────────────────────────
-  # Config-file mode (no release-type input) is what makes extra-files work, so
-  # include/version.h moves with version.txt. CalVer arrives through the
-  # Release-As footer that scripts/calver.sh writes.
+  # No release-type input: config-file mode is what makes extra-files work.
   release-please:
     name: Release PR
     runs-on: ubuntu-latest
@@ -37,20 +34,14 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
       version: ${{ steps.release.outputs.version }}
     steps:
-      # Bare owner/repo, never a full URL: GitHub reads a https:// ref as a
-      # repository with that literal name and fails before any step runs.
-      # Gitea and Forgejo resolve bare names against DEFAULT_ACTIONS_URL,
-      # which points at github.com unless a runner was told otherwise.
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── Compile and package, one leg per architecture ───────────────────────────
-  # Gated on the release-please output from THIS run, not on an `on: release`
-  # trigger: a release created with GITHUB_TOKEN does not start new workflow
-  # runs, so a release-triggered workflow would never fire.
+  # Gated on the release-please output from THIS run: a release created with
+  # GITHUB_TOKEN starts no new runs, so `on: release` would never fire.
   build:
     name: Build ${{ matrix.arch }}
     runs-on: ubuntu-latest
@@ -67,19 +58,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      # BaseTools builds BrotliCompress unconditionally, so that one nested
-      # submodule is required. Not --recursive: that drags in openssl, mbedtls,
-      # libspdm and oniguruma for nothing.
+      # BaseTools builds its brotli; build.py validates the include paths
+      # MdeModulePkg.dec and MdePkg.dec declare inside the other two. Not
+      # --recursive: that drags in openssl, mbedtls and libspdm for nothing.
       - name: Fetch build submodules
         run: |
           git submodule update --init --depth 1 edk2 libstatemachines
           git -C edk2 submodule update --init --depth 1 \
-            BaseTools/Source/C/BrotliCompress/brotli
+            BaseTools/Source/C/BrotliCompress/brotli \
+            MdeModulePkg/Library/BrotliCustomDecompressLib/brotli \
+            MdePkg/Library/MipiSysTLib/mipisyst
 
-      # scripts/build.sh insists the workspace expose this checkout as
-      # <workspace>/MeridianPkg. The symlink lives inside the edk2 work tree and
-      # is untracked, so every fresh checkout has to recreate it. -n keeps a
-      # rerun from creating edk2/MeridianPkg/MeridianPkg.
+      # Untracked (it lives in the edk2 work tree), so recreate it every time.
+      # -n keeps a rerun from creating edk2/MeridianPkg/MeridianPkg.
       - name: Link the package into the EDK2 workspace
         run: ln -sfn .. edk2/MeridianPkg
 
@@ -129,7 +120,6 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # ── Attach the artifacts to the release ─────────────────────────────────────
   publish:
     name: Attach to release
     runs-on: ubuntu-latest
@@ -149,8 +139,8 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # Each SHA256SUMS.<arch> was produced on the runner that built those
-      # binaries, so concatenate rather than recompute.
+      # Concatenate rather than recompute: each half came from the runner that
+      # built those binaries.
       - name: Merge checksums
         run: |
           cd dist
