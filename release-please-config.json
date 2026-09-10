@@ -4,11 +4,9 @@
   "last-release-sha": "314dbd96032c18558662188eb01028a07445bf48",
   "release-type": "simple",
   "include-component-in-tag": false,
-  "tag-separator": "-",
   "separate-pull-requests": false,
   "packages": {
     ".": {
-      "package-name": "meridian",
       "changelog-path": "CHANGELOG.md",
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
