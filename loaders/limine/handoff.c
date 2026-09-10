@@ -4,6 +4,12 @@
 #include "limine_boot.h"
 #include "lib.h"
 
+// The Limine handoff is long-mode specific: MSR writes, a hand-built GDT and an
+// iretq into the kernel. The protocol port is x64-only by design, so on other
+// architectures the loader compiles down to a refusal rather than a broken
+// build. Everything else under loaders/limine is architecture-neutral.
+#if defined(MDE_CPU_X64)
+
 #define LIMINE_PAGE_SIZE 0x1000ULL
 
 #define MSR_IA32_PAT 0x277
@@ -204,3 +210,13 @@ EFI_STATUS LimineHandoff(IN OUT LIMINE_CTX *Ctx)
 
     return EFI_LOAD_ERROR;
 }
+
+#else
+
+EFI_STATUS LimineHandoff(IN OUT LIMINE_CTX *Ctx)
+{
+    (VOID) Ctx;
+    return EFI_UNSUPPORTED;
+}
+
+#endif

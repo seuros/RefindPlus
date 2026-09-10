@@ -133,16 +133,23 @@ static BOOLEAN Cb_Sys(SMBIOS_STRUCTURE *Hdr, VOID *Ctx)
             R->IsApple = TRUE;
         }
     }
+    else if (Hdr->Type == 4) {
+        SMBIOS_TABLE_TYPE4 *T4 = (SMBIOS_TABLE_TYPE4 *)Hdr;
+        AsciiStrnCpyS(R->Cpu, sizeof(R->Cpu), SmbiosStr(Hdr, T4->ProcessorVersion),
+                      sizeof(R->Cpu) - 1);
+    }
     return FALSE;
 }
 
+// CPUID is x86-only. On AArch64 the SMBIOS Type 4 string Cb_Sys already
+// collected is the answer, so leave it alone rather than clobbering it.
+#if defined(MDE_CPU_IA32) || defined(MDE_CPU_X64)
 static VOID CpuBrand(OUT CHAR8 *Out, UINTN Cap)
 {
     UINT32 Regs[13];
     UINT32 Max = 0;
     AsmCpuid(0x80000000, &Max, NULL, NULL, NULL);
     if (Max < 0x80000004) {
-        AsciiStrCpyS(Out, Cap, "unknown");
         return;
     }
     AsmCpuid(0x80000002, &Regs[0], &Regs[1], &Regs[2], &Regs[3]);
@@ -151,12 +158,18 @@ static VOID CpuBrand(OUT CHAR8 *Out, UINTN Cap)
     Regs[12] = 0;
     AsciiStrnCpyS(Out, Cap, (CHAR8 *)Regs, Cap - 1);
 }
+#endif
 
 VOID CyScanSystem(IN OUT CY_REPORT *R)
 {
     CY_COMPONENT *C;
     SmbiosWalk(Cb_Sys, R);
+#if defined(MDE_CPU_IA32) || defined(MDE_CPU_X64)
     CpuBrand(R->Cpu, sizeof(R->Cpu));
+#endif
+    if (R->Cpu[0] == '\0') {
+        AsciiStrCpyS(R->Cpu, sizeof(R->Cpu), "unknown");
+    }
 
     C = CyAdd(R, "System", R->Model[0] ? CY_PRESENT : CY_UNKNOWN);
     AsciiSPrint(C->Detail, sizeof(C->Detail), "%a  SN=%a", R->Model[0] ? R->Model : "unknown",
