@@ -27,6 +27,8 @@ path = [
     ".gitignore",
     ".gitmodules",
     ".mise.toml",
+    ".release-please-manifest.json",
+    "release-please-config.json",
     "MeridianPkg.dec",
 ]
 SPDX-FileCopyrightText = "2026 Abdelkader Boudih <oss@seuros.com>"

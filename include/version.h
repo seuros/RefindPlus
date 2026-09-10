@@ -5,5 +5,5 @@
 
 #define WIDE_STR2(x) L##x
 #define WIDE_STR(x) WIDE_STR2(x)
-#define VERSION_STRING_ASCII "2026.06.0-pre"
+#define VERSION_STRING_ASCII "2026.6.0" // x-release-please-version
 #define MERIDIAN_VERSION WIDE_STR(VERSION_STRING_ASCII)

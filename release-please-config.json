@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "314dbd96032c18558662188eb01028a07445bf48",
+  "last-release-sha": "314dbd96032c18558662188eb01028a07445bf48",
+  "release-type": "simple",
+  "include-component-in-tag": false,
+  "tag-separator": "-",
+  "separate-pull-requests": false,
+  "packages": {
+    ".": {
+      "package-name": "meridian",
+      "changelog-path": "CHANGELOG.md",
+      "changelog-sections": [
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Fixes" },
+        { "type": "perf", "section": "Performance" },
+        { "type": "refactor", "section": "Refactoring" },
+        { "type": "docs", "section": "Documentation" },
+        { "type": "build", "section": "Build" },
+        { "type": "ci", "section": "Continuous Integration" },
+        { "type": "chore", "section": "Chores" }
+      ],
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "include/version.h"
+        }
+      ]
+    }
+  }
+}

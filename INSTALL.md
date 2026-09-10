@@ -37,7 +37,19 @@ Two things matter and are non-negotiable:
 
 ## What you need
 
-From the build output directory
+The quickest route is the release archive, which already holds exactly the tree
+above:
+
+```sh
+sudo unzip meridian-<version>-x64-esp.zip -d /mnt/esp
+```
+
+If you take that route, skip to [step 3](#3-make-the-firmware-boot-meridian) --
+steps 1 and 2 only matter when you are copying files out of a build tree
+yourself. `aarch64` archives place the binary at `EFI/BOOT/BOOTAA64.EFI`
+instead.
+
+Building it yourself instead, from the build output directory
 `edk2/Build/Meridian/<TARGET>_CLANGDWARF/X64/` (where `<TARGET>` is `RELEASE`,
 `DEBUG`, or `NOOPT`):
 

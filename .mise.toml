@@ -16,6 +16,26 @@ run = "./scripts/build.sh --target RELEASE"
 description = "Build Meridian for AArch64 (debug)"
 run = "./scripts/build.sh --arch AARCH64 --target DEBUG"
 
+[tasks.release-arm]
+description = "Build Meridian for AArch64 (release)"
+run = "./scripts/build.sh --arch AARCH64 --target RELEASE"
+
+[tasks.package]
+description = "Package the X64 release build into dist/"
+run = "./scripts/package-release.sh --arch X64 --target RELEASE --version $(tr -d '[:space:]' < version.txt)"
+
+[tasks.package-arm]
+description = "Package the AArch64 release build into dist/"
+run = "./scripts/package-release.sh --arch AARCH64 --target RELEASE --version $(tr -d '[:space:]' < version.txt)"
+
+[tasks.calver]
+description = "Print the next CalVer version"
+run = "./scripts/calver.sh"
+
+[tasks.release-prepare]
+description = "Pin the next CalVer with an empty Release-As commit, then push to open the release PR"
+run = "./scripts/calver.sh --commit"
+
 [tasks.test]
 description = "Run the Conn engine unit tests and the golden-image regression"
 run = "make -C conn test"
@@ -27,6 +47,13 @@ run = "rm -rf edk2/Build/Meridian"
 [tasks.submodules]
 description = "Initialize EDK2 submodule"
 run = "git submodule update --init --recursive"
+
+# The symlink lives inside the edk2 work tree and is untracked, so a fresh
+# checkout has no build workspace until this runs. -n stops a rerun from
+# creating edk2/MeridianPkg/MeridianPkg.
+[tasks.workspace]
+description = "Link this checkout into the EDK2 workspace as MeridianPkg"
+run = "ln -sfn .. edk2/MeridianPkg && ls -ld edk2/MeridianPkg"
 
 [tasks.lint]
 description = "Check REUSE compliance"

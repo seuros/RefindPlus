@@ -1,0 +1,165 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
+
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Existing release tag to re-attach artifacts to (e.g. v2026.9.0).
+          Leave empty to build and package both architectures without
+          publishing anything.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Open or merge the release PR ────────────────────────────────────────────
+  # Config-file mode (no release-type input) is what makes extra-files work, so
+  # include/version.h moves with version.txt. CalVer arrives through the
+  # Release-As footer that scripts/calver.sh writes.
+  release-please:
+    name: Release PR
+    runs-on: ubuntu-latest
+    if: github.repository == 'seuros/meridian' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      # Bare owner/repo, never a full URL: GitHub reads a https:// ref as a
+      # repository with that literal name and fails before any step runs.
+      # Gitea and Forgejo resolve bare names against DEFAULT_ACTIONS_URL,
+      # which points at github.com unless a runner was told otherwise.
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Compile and package, one leg per architecture ───────────────────────────
+  # Gated on the release-please output from THIS run, not on an `on: release`
+  # trigger: a release created with GITHUB_TOKEN does not start new workflow
+  # runs, so a release-triggered workflow would never fire.
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: >-
+      !cancelled() && github.repository == 'seuros/meridian' &&
+      (needs.release-please.outputs.release_created == 'true' ||
+       github.event_name == 'workflow_dispatch')
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [X64, AARCH64]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      # BaseTools builds BrotliCompress unconditionally, so that one nested
+      # submodule is required. Not --recursive: that drags in openssl, mbedtls,
+      # libspdm and oniguruma for nothing.
+      - name: Fetch build submodules
+        run: |
+          git submodule update --init --depth 1 edk2 libstatemachines
+          git -C edk2 submodule update --init --depth 1 \
+            BaseTools/Source/C/BrotliCompress/brotli
+
+      # scripts/build.sh insists the workspace expose this checkout as
+      # <workspace>/MeridianPkg. The symlink lives inside the edk2 work tree and
+      # is untracked, so every fresh checkout has to recreate it. -n keeps a
+      # rerun from creating edk2/MeridianPkg/MeridianPkg.
+      - name: Link the package into the EDK2 workspace
+        run: ln -sfn .. edk2/MeridianPkg
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential uuid-dev nasm acpica-tools \
+            python3 python3-setuptools clang lld llvm zip
+
+      - name: Cache BaseTools
+        uses: actions/cache@v4
+        with:
+          path: edk2/BaseTools/Source/C/bin
+          key: basetools-${{ runner.os }}-${{ hashFiles('.gitmodules') }}
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ needs.release-please.outputs.version }}" ]; then
+            version='${{ needs.release-please.outputs.version }}'
+          else
+            version="$(tr -d '[:space:]' < version.txt)"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Packaging as ${version}"
+
+      - name: Build
+        run: ./scripts/build.sh --arch ${{ matrix.arch }} --target RELEASE
+
+      - name: Package
+        run: |
+          ./scripts/package-release.sh \
+            --arch ${{ matrix.arch }} \
+            --target RELEASE \
+            --version '${{ steps.version.outputs.version }}' \
+            --out dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: meridian-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  # ── Attach the artifacts to the release ─────────────────────────────────────
+  publish:
+    name: Attach to release
+    runs-on: ubuntu-latest
+    needs: [release-please, build]
+    if: >-
+      !cancelled() && github.repository == 'seuros/meridian' &&
+      needs.build.result == 'success' &&
+      (needs.release-please.outputs.release_created == 'true' ||
+       inputs.tag != '')
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: meridian-*
+          path: dist
+          merge-multiple: true
+
+      # Each SHA256SUMS.<arch> was produced on the runner that built those
+      # binaries, so concatenate rather than recompute.
+      - name: Merge checksums
+        run: |
+          cd dist
+          cat SHA256SUMS.x64 SHA256SUMS.aarch64 > SHA256SUMS
+          rm -f SHA256SUMS.x64 SHA256SUMS.aarch64
+          ls -la
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"

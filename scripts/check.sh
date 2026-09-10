@@ -166,6 +166,57 @@ check_no_legacy_makefiles() {
     fi
 }
 
+check_release_version() {
+    local header_line header_version manifest_version file_version
+
+    info "Checking release version agreement"
+
+    header_line="$(grep -n 'VERSION_STRING_ASCII' include/version.h | head -1 || true)"
+    if [[ "${header_line}" != *"x-release-please-version"* ]]; then
+        fail "include/version.h lost its x-release-please-version marker; release-please would stop bumping it silently"
+        return
+    fi
+
+    header_version="$(sed -n 's/.*VERSION_STRING_ASCII[[:space:]]*"\([^"]*\)".*/\1/p' include/version.h | head -1)"
+    file_version="$(tr -d '[:space:]' < version.txt)"
+    manifest_version="$(sed -n 's/.*"\."[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .release-please-manifest.json | head -1)"
+
+    # Unpadded YYYY.M.MICRO only. release-please parses the version as semver and
+    # strips leading zeros, so a padded month would stop matching the marker.
+    if [[ ! "${header_version}" =~ ^[0-9]{4}\.([1-9]|1[0-2])\.[0-9]+$ ]]; then
+        fail "Version is not unpadded CalVer (YYYY.M.MICRO): ${header_version}"
+    fi
+
+    if [[ "${header_version}" != "${file_version}" ]] || [[ "${header_version}" != "${manifest_version}" ]]; then
+        fail "Version disagreement: include/version.h=${header_version} version.txt=${file_version} manifest=${manifest_version}"
+    else
+        info "Version ${header_version} agrees across header, version.txt and manifest"
+    fi
+}
+
+check_release_drivers() {
+    local driver missing=0
+
+    info "Checking packaged filesystem drivers against MeridianPkg.dsc"
+    while IFS= read -r driver; do
+        if ! grep -q "MeridianPkg/filesystems/${driver}.inf" MeridianPkg.dsc; then
+            fail "package-release.sh ships ${driver}.efi but MeridianPkg.dsc does not build it"
+            missing=$((missing + 1))
+        fi
+    done < <(sed -n 's/^FS_DRIVERS=(\(.*\))$/\1/p' scripts/package-release.sh | tr ' ' '\n')
+
+    while IFS= read -r driver; do
+        if ! grep -q "^FS_DRIVERS=(.*\b${driver}\b.*)" scripts/package-release.sh; then
+            fail "MeridianPkg.dsc builds ${driver}.efi but package-release.sh does not ship it"
+            missing=$((missing + 1))
+        fi
+    done < <(sed -n 's|^[[:space:]]*MeridianPkg/filesystems/\([a-z0-9]*\)\.inf$|\1|p' MeridianPkg.dsc)
+
+    if [[ "${missing}" -eq 0 ]]; then
+        info "Packaged filesystem drivers match the package definition"
+    fi
+}
+
 check_active_workflows() {
     local stale_pattern='RefindPlusRepo/RefindPlus|GOPFix|x64_RefindPlus|RefindPlus-Artefacts'
 
@@ -190,6 +241,8 @@ check_linter_configs
 check_inf_sources
 check_dsc_components
 check_public_docs
+check_release_version
+check_release_drivers
 check_active_workflows
 check_no_legacy_makefiles
 

@@ -88,6 +88,34 @@ inherited config is present, clean it manually or delete it.
 | `scripts/` | Local maintenance and build entrypoints. |
 
 
+## Download
+
+Each release attaches, per architecture (`x64` and `aarch64`):
+
+| Asset | What it is |
+| --- | --- |
+| `meridian-<version>-<arch>-esp.zip` | The complete on-ESP tree. Unzip it at the root of your ESP. |
+| `Meridian-<version>-<arch>.efi` | The boot manager on its own. |
+| `Cydia-<version>-<arch>.efi` | Standalone pre-OS hardware diagnostic. |
+| `DarkPassenger-<version>-<arch>.efi` | Standalone LPSS re-enablement tool. |
+| `SHA256SUMS` | Checksums for every asset above. |
+
+The ESP archive is the fast path:
+
+```sh
+sudo unzip meridian-<version>-x64-esp.zip -d /boot/efi
+```
+
+That lands `EFI/BOOT/BOOTX64.EFI`, `EFI/Meridian/Meridian.efi` and the
+filesystem drivers in `EFI/Meridian/fs/`. Most firmware boots the fallback path
+with no further action; see [INSTALL.md](INSTALL.md) for NVRAM boot entries and
+the per-OS mount recipes.
+
+Releases are unsigned, and the binaries are not reproducible: the build folds
+`__DATE__`/`__TIME__` into the menu cache fingerprint, so two builds of the same
+tag differ. `SHA256SUMS` tells you the download is intact, not how it was built.
+If you need Secure Boot, build and sign it yourself.
+
 ## Build
 
 Meridian builds as an EDK2 package. Expose this checkout inside an EDK2
