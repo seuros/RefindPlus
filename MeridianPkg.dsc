@@ -175,8 +175,7 @@
     DEFINE RFT_BLD_DBG      = -DMERIDIAN_DEBUG=1 -DFSW_DEBUG_LEVEL=0
     DEFINE RFT_BLD_NPT      = -DMERIDIAN_DEBUG=2 -DFSW_DEBUG_LEVEL=2
 
-    # Every module that includes a libstatemachines header needs this, not just
-    # the one compiling the runtime. Without it schema.h pulls host <stdint.h>.
+    *_*_*_CC_FLAGS = -nostdlibinc
     *_*_*_CC_FLAGS = -DSTATE_MACHINE_FREESTANDING -I$(WORKSPACE)/MeridianPkg/Library/StateMachineLib -I$(WORKSPACE)/MeridianPkg/libstatemachines/include
 
     XCODE:*_*_*_DLINK_FLAGS = -seg1addr 0x300

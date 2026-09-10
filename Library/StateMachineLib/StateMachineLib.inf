@@ -1,14 +1,6 @@
 ## @file
 #  StateMachineLib - EDK2 wrapper around the libstatemachines runtime.
 #
-#  Compiles the submodule runtime (libstatemachines/src/state_machine.c) under
-#  its freestanding profile, so Meridian can drive table-defined FSMs with zero
-#  heap and no standard library. STATE_MACHINE_FREESTANDING makes the library
-#  pull <state_machine_port.h>; we supply that header from this directory (it
-#  maps the contract onto <Uefi.h>) and put this dir first on the include path,
-#  so the library never pulls its own ports/ reference. All UEFI knowledge stays
-#  here in MeridianPkg.
-#
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 Abdelkader Boudih <oss@seuros.com>
 ##
@@ -26,5 +18,3 @@
 
 [Packages]
     MdePkg/MdePkg.dec
-
-# Freestanding profile and port include path: MeridianPkg.dsc [BuildOptions.common].
