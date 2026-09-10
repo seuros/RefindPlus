@@ -27,9 +27,4 @@
 [Packages]
     MdePkg/MdePkg.dec
 
-[BuildOptions]
-    # Select the freestanding profile and supply our UEFI port ahead of the
-    # library's public headers. Port dir MUST precede the library include dir so
-    # <state_machine_port.h> resolves to ours. The package is mounted at
-    # $(WORKSPACE)/MeridianPkg per scripts/build.sh.
-    *_*_*_CC_FLAGS = -DSTATE_MACHINE_FREESTANDING -I$(WORKSPACE)/MeridianPkg/Library/StateMachineLib -I$(WORKSPACE)/MeridianPkg/libstatemachines/include
+# Freestanding profile and port include path: MeridianPkg.dsc [BuildOptions.common].
