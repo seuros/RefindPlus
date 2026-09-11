@@ -1,5 +1,22 @@
 # Changelog
 
+## [2026.9.1](https://github.com/seuros/meridian/compare/v2026.9.0...v2026.9.1) (2026-09-11)
+
+
+### Fixes
+
+* **build:** apply the state machine freestanding profile package-wide ([1cdee8c](https://github.com/seuros/meridian/commit/1cdee8c6c1791b69247fb7594b83cf1655a3d8d8))
+* **build:** compile with -nostdlibinc so host headers stay out ([2bfa74a](https://github.com/seuros/meridian/commit/2bfa74a28a95cb7ad23bbc037978d6fb829456af))
+* **build:** give Meridian its own weak mem* intrinsics ([29fd55b](https://github.com/seuros/meridian/commit/29fd55b1a89d3f8a01f4da8d39fcdaff269c120a))
+* **build:** shim signal.h so Lua stops reaching into host glibc ([de40dce](https://github.com/seuros/meridian/commit/de40dce8df34484e604f53e6c52688e06737636a))
+* **ci:** fetch the submodules build.py validates but never builds ([5981f14](https://github.com/seuros/meridian/commit/5981f1484136f42241abe9d908612691fe0ee99c))
+* **ci:** let release-please recognise its own release PR ([1233c4d](https://github.com/seuros/meridian/commit/1233c4d897dc4ea799bb07a902a26d7e34e230f6))
+
+
+### Build
+
+* pin the clang toolchain in mise instead of apt ([2febd4f](https://github.com/seuros/meridian/commit/2febd4f3054de80ec2ee770689c59f042ab0392e))
+
 ## [2026.9.0](https://github.com/seuros/meridian/compare/v2026.6.0...v2026.9.0) (2026-09-10)
 
 
